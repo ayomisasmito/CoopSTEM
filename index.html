@@ -1,0 +1,690 @@
+<!--COOP UTS/UAS EVALUATION TRACKER v3-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --ink:#1b1613; --ink-soft:#6d645c; --ink-faint:#9a9088;
+  --paper:#f4f2ec; --card:#ffffff; --line:#e6e0d6; --line-strong:#d8d0c4;
+  --maroon:#8a1b2e; --maroon-deep:#6f1524; --maroon-tint:#f6e9ea;
+  --gold:#a9761b; --gold-tint:#f7eddb;
+  --green:#2f6b4f; --green-tint:#e4efe8;
+  --blue:#2a5b86; --blue-tint:#e7eef5;
+  --shadow:0 1px 2px rgba(27,22,19,.05),0 6px 20px -12px rgba(27,22,19,.18);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+h1,h2,h3{font-family:'Spectral',Georgia,serif;font-weight:600;letter-spacing:-.01em;margin:0}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px}
+a{color:var(--blue)}
+.wrap{max-width:1160px;margin:0 auto;padding:0 22px}
+header.top{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fbfaf6,#f4f2ec)}
+.brandrow{display:flex;align-items:center;gap:16px;padding:18px 0 16px;flex-wrap:wrap}
+.crest{width:42px;height:42px;border-radius:9px;background:var(--maroon);color:#fff;display:grid;place-items:center;flex:none;box-shadow:var(--shadow);position:relative}
+.crest span{font-family:'Spectral',serif;font-weight:700;font-size:19px;line-height:1}
+.crest::after{content:"";position:absolute;inset:0;border:1px solid rgba(255,255,255,.22);border-radius:9px}
+.brand h1{font-size:20px;line-height:1.1}
+.brand .sub{color:var(--ink-soft);font-size:12.5px;margin-top:2px;letter-spacing:.02em}
+.brand .sub b{color:var(--maroon);font-weight:600}
+.topspace{flex:1}
+.cloud{font-size:11.5px;color:var(--ink-soft);display:flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line-strong);border-radius:20px;background:#fff}
+.cloud .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-faint)}
+.cloud.on .dot{background:var(--green)}.cloud.on{color:var(--green);border-color:#bfe0cd}
+.cloud.err .dot{background:var(--maroon)}.cloud.err{color:var(--maroon)}
+.btn{border:1px solid var(--line-strong);background:#fff;color:var(--ink);padding:9px 14px;border-radius:9px;font-weight:550;font-size:13px;display:inline-flex;align-items:center;gap:7px;transition:.14s;white-space:nowrap}
+.btn:hover{border-color:var(--maroon);color:var(--maroon)}
+.btn.primary{background:var(--maroon);border-color:var(--maroon);color:#fff}
+.btn.primary:hover{background:var(--maroon-deep);color:#fff}
+.btn.sm{padding:6px 11px;font-size:12.5px;border-radius:8px}
+.btn.danger{color:var(--maroon);border-color:#e7c3c9}
+.btn.danger:hover{background:var(--maroon);color:#fff;border-color:var(--maroon)}
+.btn.gmail{background:#fff;border-color:#e3b7bd;color:#c5221f}.btn.gmail:hover{background:#c5221f;color:#fff;border-color:#c5221f}
+.btn.outlook{background:#0f6cbd;border-color:#0f6cbd;color:#fff}.btn.outlook:hover{background:#0a4f8a;border-color:#0a4f8a;color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+nav.tabs{display:flex;gap:2px;margin-top:2px}
+.tab{padding:11px 16px 13px;font-size:13.5px;font-weight:550;color:var(--ink-soft);border-bottom:2px solid transparent;background:none;border:none;display:inline-flex;align-items:center;gap:8px}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--maroon);border-bottom:2px solid var(--maroon)}
+.tab .pip{background:var(--maroon);color:#fff;border-radius:20px;font-size:11px;padding:1px 7px;font-weight:600}
+.tab .pip.zero{background:var(--line-strong);color:var(--ink-soft)}
+main{padding:26px 0 70px}
+.panel{display:none}.panel.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 15px}
+.stat .n{font-family:'Spectral',serif;font-size:26px;font-weight:600;line-height:1}
+.stat .l{font-size:11.5px;color:var(--ink-soft);margin-top:6px;letter-spacing:.02em}
+.stat.act .n{color:var(--maroon)}
+.stat .bar{height:3px;border-radius:3px;background:var(--line);margin-top:9px;overflow:hidden}
+.stat .bar i{display:block;height:100%;background:var(--maroon)}
+.sec-h{display:flex;align-items:baseline;gap:12px;margin:6px 0 14px}
+.sec-h h2{font-size:17px}.sec-h .hint{color:var(--ink-soft);font-size:12.5px}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--maroon);font-weight:600}
+.rem-group{margin-bottom:26px}
+.rem-group>.eyebrow{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.rem-group .cnt{color:var(--ink-faint);font-weight:500;letter-spacing:normal;text-transform:none;font-size:12px}
+.rem{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--line-strong);border-radius:10px;padding:12px 15px;display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.rem.overdue{border-left-color:var(--maroon);background:linear-gradient(90deg,var(--maroon-tint),#fff 40%)}
+.rem.soon{border-left-color:var(--gold);background:linear-gradient(90deg,var(--gold-tint),#fff 42%)}
+.rem.wait{border-left-color:var(--blue)}
+.rem .type{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;padding:2px 7px;border-radius:5px;background:var(--ink);color:#fff;flex:none}
+.rem .type.uas{background:var(--maroon)}
+.rem .body{flex:1;min-width:0}
+.rem .who{font-weight:600;font-size:13.5px}
+.rem .meta{font-size:12px;color:var(--ink-soft);margin-top:2px}
+.rem .meta b{color:var(--ink);font-weight:600}
+.rem .when{font-size:12px;text-align:right;flex:none;color:var(--ink-soft)}
+.rem .when .big{font-weight:700;font-family:'Spectral',serif;font-size:15px;display:block;color:var(--ink)}
+.rem.overdue .when .big{color:var(--maroon)}
+.rem .act{flex:none}
+.empty{text-align:center;color:var(--ink-soft);padding:40px 20px;background:var(--card);border:1px dashed var(--line-strong);border-radius:12px}
+.empty .ic{font-size:26px;margin-bottom:6px}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.search{flex:1;min-width:200px;position:relative}
+.search input{width:100%;padding:10px 12px 10px 34px;border:1px solid var(--line-strong);border-radius:9px;background:#fff;outline:none}
+.search input:focus{border-color:var(--maroon)}
+.search .ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink-faint)}
+.sel{padding:10px 12px;border:1px solid var(--line-strong);border-radius:9px;background:#fff;outline:none;color:var(--ink)}
+.sel:focus{border-color:var(--maroon)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line-strong);background:#fff;color:var(--ink-soft);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:500}
+.chip:hover{border-color:var(--maroon);color:var(--maroon)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.toolbar2{display:flex;gap:8px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+.toolbar2 .count{color:var(--ink-soft);font-size:12.5px;margin-left:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:13px;margin-bottom:11px;box-shadow:var(--shadow);overflow:hidden}
+.card.new{border-color:var(--maroon);box-shadow:0 0 0 2px var(--maroon-tint)}
+.card .head{display:grid;grid-template-columns:1fr auto;gap:14px;padding:15px 17px;cursor:pointer;align-items:start}
+.card .head:hover{background:#fcfbf8}
+.who-block{min-width:0}
+.who-block .name{font-family:'Spectral',serif;font-size:16px;font-weight:600;line-height:1.2}
+.who-block .prodichip{font-size:10.5px;font-weight:600;color:var(--maroon);background:var(--maroon-tint);padding:1px 7px;border-radius:5px;margin-left:8px;vertical-align:middle;letter-spacing:.03em}
+.who-block .co{font-size:12.5px;color:var(--ink-soft);margin-top:3px}
+.who-block .co b{color:var(--ink);font-weight:550}
+.who-block .sup{font-size:12px;color:var(--ink-soft);margin-top:2px}
+.head-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.badges{display:flex;gap:6px}
+.bdg{font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:20px;display:inline-flex;gap:5px;align-items:center;border:1px solid transparent;letter-spacing:.02em}
+.bdg .dot{width:6px;height:6px;border-radius:50%}
+.bdg.todo{background:#f3f0ea;color:var(--ink-soft)}.bdg.todo .dot{background:var(--ink-faint)}
+.bdg.sent{background:var(--blue-tint);color:var(--blue)}.bdg.sent .dot{background:var(--blue)}
+.bdg.done{background:var(--green-tint);color:var(--green)}.bdg.done .dot{background:var(--green)}
+.bdg.due{background:var(--gold-tint);color:var(--gold)}.bdg.due .dot{background:var(--gold)}
+.bdg.over{background:var(--maroon-tint);color:var(--maroon)}.bdg.over .dot{background:var(--maroon)}
+.caret{color:var(--ink-faint);font-size:12px;transition:.2s;align-self:center}
+.card.open .caret{transform:rotate(180deg)}
+.tlwrap{grid-column:1/-1;margin-top:4px}
+.tl .track{position:relative;height:7px;background:var(--line);border-radius:5px;margin:16px 2px 4px}
+.tl .prog{position:absolute;top:0;bottom:0;left:0;background:linear-gradient(90deg,#c9b7a0,#a9761b33);border-radius:5px}
+.tl .today{position:absolute;top:-4px;width:2px;height:15px;background:var(--ink);border-radius:2px}
+.tl .today::after{content:"hari ini";position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--ink);white-space:nowrap;font-weight:600}
+.tl .mk{position:absolute;top:50%;transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line-strong)}
+.tl .mk.uts{background:var(--ink)}.tl .mk.uas{background:var(--maroon)}
+.tl .mk.hit{box-shadow:0 0 0 1px currentColor}
+.tl .lbls{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-faint);margin-top:5px}
+.tl .lbls .mono{color:var(--ink-soft)}
+.card .body{border-top:1px solid var(--line);padding:16px 17px;display:none;background:#fcfbf8}
+.card.open .body{display:block}
+.editgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px 14px;margin-bottom:16px}
+.ef{display:flex;flex-direction:column}
+.ef.full{grid-column:1/-1}
+.ef.two{grid-column:span 2}
+.ef label{font-size:10.5px;font-weight:600;color:var(--ink-soft);letter-spacing:.03em;text-transform:uppercase;margin-bottom:5px}
+.ef input,.ef select{padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;background:#fff;outline:none;width:100%}
+.ef input:focus,.ef select:focus{border-color:var(--maroon)}
+.ef .durrow{display:flex;gap:7px}.ef .durrow input{flex:1}
+.editgrid .sectitle{grid-column:1/-1;font-size:11px;font-weight:600;color:var(--ink-soft);letter-spacing:.03em;text-transform:uppercase;border-top:1px dashed var(--line-strong);padding-top:12px;margin-top:2px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field .flabel{font-size:11px;font-weight:600;color:var(--ink-soft);letter-spacing:.03em;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:7px}
+.exam{border:1px solid var(--line);border-radius:10px;padding:13px;background:#fff}
+.exam .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:11px}
+.exam .top .t{font-family:'Spectral',serif;font-weight:600;font-size:14px}
+.exam .top .d{font-size:11px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace}
+.exam .row{display:flex;gap:8px;align-items:center;margin-bottom:9px;flex-wrap:wrap}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;user-select:none;cursor:pointer;font-weight:500}
+.check input{width:17px;height:17px;accent-color:var(--green);cursor:pointer}
+.linkline{display:flex;gap:7px;align-items:center;margin-top:6px}
+.linkline input{flex:1;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;background:#fff;min-width:0}
+.linkline input:focus{outline:none;border-color:var(--maroon)}
+.docs{margin-top:15px}
+.docwrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+.mailinfo{font-size:11.5px;color:var(--ink-faint);margin-top:8px}
+.rowbtns{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.setcard{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:20px 22px;margin-bottom:16px;box-shadow:var(--shadow)}
+.setcard h3{font-size:15px;margin-bottom:3px}
+.setcard .desc{color:var(--ink-soft);font-size:12.5px;margin-bottom:16px}
+.setgrid{display:grid;grid-template-columns:1fr 1fr;gap:15px 20px}
+.setf label{font-size:11.5px;font-weight:600;color:var(--ink-soft);letter-spacing:.02em;display:block;margin-bottom:6px}
+.setf input,.setf textarea{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:9px;background:#fff;outline:none}
+.setf input:focus,.setf textarea:focus{border-color:var(--maroon)}
+.setf .u{font-size:11px;color:var(--ink-faint);margin-top:4px}
+.setf.wide{grid-column:1/-1}
+.slidebox{display:flex;align-items:center;gap:12px}
+.slidebox input[type=range]{flex:1;accent-color:var(--maroon)}
+.slidebox .val{font-family:'IBM Plex Mono',monospace;font-weight:500;min-width:44px;text-align:right}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:9px;overflow:hidden}
+.seg button{padding:8px 14px;background:#fff;border:none;font-size:12.5px;font-weight:550;color:var(--ink-soft);border-right:1px solid var(--line-strong)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--maroon);color:#fff}
+.dim{opacity:.5;pointer-events:none}
+.sqlbox{background:#1b1613;color:#e7e0d6;font-family:'IBM Plex Mono',monospace;font-size:11.5px;border-radius:10px;padding:14px;white-space:pre;overflow:auto;line-height:1.5;margin-top:4px}
+.savebar{position:sticky;bottom:0;background:linear-gradient(180deg,transparent,var(--paper) 30%);padding-top:14px;margin-top:8px;display:flex;justify-content:flex-end;gap:10px}
+.scrim{position:fixed;inset:0;background:rgba(27,22,19,.42);backdrop-filter:blur(2px);display:none;align-items:flex-start;justify-content:center;padding:40px 18px;z-index:50;overflow:auto}
+.scrim.show{display:flex}
+.modal{background:var(--card);border-radius:16px;max-width:640px;width:100%;box-shadow:0 24px 60px -20px rgba(27,22,19,.5);overflow:hidden}
+.modal .mhead{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,#fbfaf6,#fff)}
+.modal .mhead .type{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;padding:3px 9px;border-radius:6px;background:var(--ink);color:#fff}
+.modal .mhead .type.uas{background:var(--maroon)}
+.modal .mhead h3{font-size:16px;flex:1}
+.modal .mhead .x{border:none;background:none;font-size:20px;color:var(--ink-faint);padding:2px 6px;border-radius:7px}
+.modal .mhead .x:hover{background:var(--maroon-tint);color:var(--maroon)}
+.modal .mbody{padding:20px 22px;max-height:62vh;overflow:auto}
+.mrow{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;margin-bottom:11px}
+.mrow label{font-size:12px;font-weight:600;color:var(--ink-soft)}
+.mrow input{padding:8px 11px;border:1px solid var(--line-strong);border-radius:8px;outline:none}
+.mrow input:focus{border-color:var(--maroon)}
+.mbody textarea{width:100%;min-height:230px;padding:13px 14px;border:1px solid var(--line-strong);border-radius:10px;line-height:1.55;font-size:13px;resize:vertical;outline:none;background:#fff}
+.mbody textarea:focus{border-color:var(--maroon)}
+.mfoot{padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:9px;align-items:center;background:#fcfbf8;flex-wrap:wrap}
+.mfoot .spacer{flex:1}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;font-weight:500;z-index:80;transition:.25s;box-shadow:0 10px 30px -8px rgba(0,0,0,.4);pointer-events:none;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast b{color:#ffd9a8}
+@media(max-width:820px){.stats{grid-template-columns:repeat(3,1fr)}.grid2,.setgrid,.docwrap{grid-template-columns:1fr}.editgrid{grid-template-columns:1fr 1fr}.ef.two{grid-column:span 2}.card .head{grid-template-columns:1fr}.head-right{align-items:flex-start}.mrow{grid-template-columns:1fr}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brandrow">
+      <div class="crest"><span>S</span></div>
+      <div class="brand"><h1>Coop Evaluation Tracker</h1>
+        <div class="sub">Evaluasi UTS &amp; UAS Magang · <b>School of STEM</b> · Semester <b>2026&#8209;1</b></div></div>
+      <div class="topspace"></div>
+      <div class="cloud" id="cloudPill"><span class="dot"></span><span id="cloudTxt">Lokal</span></div>
+      <button class="btn" id="btnImport">⭳ Impor</button>
+      <button class="btn" id="btnExport">‣ Export</button>
+      <input type="file" id="fileImport" accept=".xlsx,.xls,.csv" style="display:none">
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="home">Beranda &amp; Pengingat <span class="pip zero" id="pipHome">0</span></button>
+      <button class="tab" data-tab="list">Mahasiswa <span class="pip" id="pipList">0</span></button>
+      <button class="tab" data-tab="admin">Pengaturan Admin</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="panel active" id="panel-home">
+    <div class="stats" id="stats"></div>
+    <div class="sec-h"><h2>Yang perlu kamu tindak lanjuti</h2><span class="hint" id="basisHint"></span></div>
+    <div id="reminders"></div>
+  </section>
+
+  <section class="panel" id="panel-list">
+    <div class="toolbar">
+      <div class="search"><span class="ic">⌕</span><input id="q" placeholder="Cari nama, perusahaan, atau supervisor…"></div>
+      <select class="sel" id="fProdi"><option value="">Semua Prodi</option></select>
+      <button class="btn primary" id="btnAdd">＋ Tambah mahasiswa</button>
+    </div>
+    <div class="toolbar2">
+      <div class="chips" id="filters">
+        <button class="chip on" data-f="all">Semua status</button>
+        <button class="chip" data-f="uts-todo">Perlu kirim UTS</button>
+        <button class="chip" data-f="uas-todo">Perlu kirim UAS</button>
+        <button class="chip" data-f="waiting">Menunggu supervisor</button>
+        <button class="chip" data-f="done">Selesai</button>
+        <button class="chip" data-f="nodate">Tanpa periode</button>
+      </div>
+      <span class="count" id="listCount"></span>
+    </div>
+    <div id="cards"></div>
+  </section>
+
+  <section class="panel" id="panel-admin">
+    <div class="setcard">
+      <h3>Jadwal &amp; pengingat</h3>
+      <div class="desc">Pilih dasar perhitungan tanggal UTS &amp; UAS untuk pengingat.</div>
+      <div class="setf" style="margin-bottom:16px"><label>Dasar tanggal evaluasi</label>
+        <div class="seg" id="segBasis">
+          <button data-m="auto">Otomatis dari periode magang</button>
+          <button data-m="univ">Tanggal UTS/UAS universitas</button>
+        </div>
+      </div>
+      <div class="setgrid" id="univDates">
+        <div class="setf"><label>Tanggal UTS universitas</label><input type="date" id="s_utsUniv"><div class="u">Berlaku sama untuk semua mahasiswa.</div></div>
+        <div class="setf"><label>Tanggal UAS universitas</label><input type="date" id="s_uasUniv"><div class="u">Berlaku sama untuk semua mahasiswa.</div></div>
+      </div>
+      <div class="setgrid" id="autoDates" style="margin-top:15px">
+        <div class="setf"><label>Titik UTS (persen dari durasi magang)</label>
+          <div class="slidebox"><input type="range" id="s_utspct" min="20" max="80" step="5"><span class="val" id="s_utspct_v"></span></div>
+          <div class="u">Dipakai saat mode “Otomatis”. 50% = tengah magang.</div></div>
+        <div class="setf"><label>Titik UAS (hari sebelum selesai)</label>
+          <div class="slidebox"><input type="range" id="s_uasoff" min="0" max="30" step="1"><span class="val" id="s_uasoff_v"></span></div>
+          <div class="u">Dipakai saat mode “Otomatis”. 0 = di tanggal selesai.</div></div>
+      </div>
+      <div class="setgrid" style="margin-top:15px">
+        <div class="setf"><label>Mulai ingatkan berapa hari sebelumnya (H&#8209;)</label>
+          <div class="slidebox"><input type="range" id="s_lead" min="1" max="30" step="1"><span class="val" id="s_lead_v"></span></div></div>
+        <div class="setf"><label>Tenggat pengisian untuk supervisor (hari sejak email)</label>
+          <div class="slidebox"><input type="range" id="s_deadline" min="1" max="14" step="1"><span class="val" id="s_deadline_v"></span></div></div>
+      </div>
+    </div>
+
+    <div class="setcard">
+      <h3>Link formulir evaluasi</h3>
+      <div class="desc">Otomatis dimasukkan ke email UTS / UAS.</div>
+      <div class="setgrid">
+        <div class="setf"><label>Link Evaluasi UTS</label><input id="s_linkuts"></div>
+        <div class="setf"><label>Link Evaluasi UAS</label><input id="s_linkuas"></div>
+      </div>
+    </div>
+
+    <div class="setcard">
+      <h3>Kelola data</h3>
+      <div class="desc">Kembalikan seluruh data mahasiswa ke bawaan awal (dari file 2026-1). Tidak menghapus data di Supabase.</div>
+      <button class="btn danger sm" id="btnReset">↺ Kembalikan ke data awal</button>
+    </div>
+    <div class="savebar"><span class="mfoot note" id="saveState" style="font-size:11.5px;color:var(--ink-faint)"></span></div>
+  </section>
+</main>
+
+<!-- EMAIL MODAL -->
+<div class="scrim" id="scrimMail">
+  <div class="modal">
+    <div class="mhead"><span class="type" id="m_type">UTS</span><h3 id="m_title">Tulis Email Evaluasi</h3><button class="x" id="m_close">×</button></div>
+    <div class="mbody">
+      <div class="mrow"><label>Kepada</label><input id="m_to"></div>
+      <div class="mrow"><label>Subjek</label><input id="m_subj"></div>
+      <div class="mrow"><label>Tenggat isi</label><input id="m_deadline"></div>
+      <textarea id="m_body"></textarea>
+    </div>
+    <div class="mfoot">
+      <button class="btn sm outlook" id="m_outlook">✉ Buka di Outlook</button>
+      <button class="btn sm" id="m_copy">⧉ Salin teks</button>
+      <div class="spacer"></div>
+      <button class="btn sm primary" id="m_mark">✓ Tandai sudah dikirim</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ SEED ============ */
+const SEED = [{"nim":"23102310001","nama":"Daniel Liandro Nicola","prodi":"BM","perusahaan":"PT Mineral Alam Abadi","posisi":"Finance Internship","supervisor":"Rheza","email":"contact@mineralalamabadi.com","durasi_asli":"10 Agustus 2026 - 10 November 2026","mulai":"2026-08-10","selesai":"2026-11-10","hari":92},{"nim":"23102310002","nama":"Jovan Alexander Lee","prodi":"BM","perusahaan":"PT. Bintan Motor Berjaya","posisi":"Admin","supervisor":"Dona Novita","email":"bmb_hrd@yahoo,com","durasi_asli":"10 Agustus 2026 - 30 November 2026","mulai":"2026-08-10","selesai":"2026-11-30","hari":112},{"nim":"23102310006","nama":"Irene Priscilla Liem","prodi":"BM","perusahaan":"MARS","posisi":"Sales Modern Trade","supervisor":"Pak Jeffry Jonathan dan Bu Biantika Wardhani","email":"Jeffry.Jonathan@effem.com biantika.wardhani@effem.com","durasi_asli":"24 Agustus 2026-23 Februari 2027","mulai":"2026-08-24","selesai":"2027-02-23","hari":183},{"nim":"23102310007","nama":"Jonathan Orlando Yokajaya","prodi":"BM","perusahaan":"PT Equity Life Indonesia","posisi":"Actuary Valuation and Reporting","supervisor":"Trishadi","email":"trishadi@equity.id","durasi_asli":"20 Agustus - 20 November 2026","mulai":"2026-08-20","selesai":"2026-11-20","hari":92},{"nim":"23102310008","nama":"Abigail Stephanie Lin","prodi":"BM","perusahaan":"PT Connect Andalan Indonesia (JAST GROUP - PT Jasnita Telekomindo)","posisi":"Product Development","supervisor":"Ci Chiquitta","email":"chiquitta@jasnita.com","durasi_asli":"03 Agustus 2026 - 03 Februari 2027 (tentatif, periode bisa berubah)","mulai":"2026-08-03","selesai":"2027-02-03","hari":184},{"nim":"23102310009","nama":"Adhi Gabriel Putra Bolla","prodi":"BM","perusahaan":"Badan Pusat Statistik Kabupaten Rote Ndao","posisi":"Produksi Statistik","supervisor":"Isay Suhardjo Hendrik Adu, SST","email":"isay.adu@bps.go.id","durasi_asli":"10 Agustus 2026 - 27 November 2026","mulai":"2026-08-10","selesai":"2026-11-27","hari":109},{"nim":"23102310010","nama":"Aizar Akbar Alamsyah","prodi":"BM","perusahaan":"PT. MANDANA MULTI SAFARINDO","posisi":"admin staff","supervisor":"Nova Nuryna Alamsyah","email":"mandanamultisafarindo@gmail.com","durasi_asli":"05 Agustus 2026 - 10 Januari 2027","mulai":"2026-08-05","selesai":"2027-01-10","hari":158},{"nim":"23102310012","nama":"Angeline Christine Widjaja","prodi":"BM","perusahaan":"Geonich Agrifarm","posisi":"Finance","supervisor":"Brigitta Putri","email":"brigittaputri.geo@gmail.com","durasi_asli":"10 Agustus 2026 - 30 Desember 2026","mulai":"2026-08-10","selesai":"2026-12-30","hari":142},{"nim":"23102310013","nama":"Anthony Rafael Tan","prodi":"BM","perusahaan":"MSIG General Insurance","posisi":"Strategy Department - Marketing Strategy Planning Section - Market Research Analysis Intern","supervisor":"Rizky Armanda","email":"rizky_armanda@id.msig-asia.com","durasi_asli":"13 Juli 2026 - 13 November 2026","mulai":"2026-07-13","selesai":"2026-11-13","hari":123},{"nim":"23102310014","nama":"Arlyne Metta Taneli","prodi":"BM","perusahaan":"Mars Wrigley","posisi":"Commercial and Digital Operations","supervisor":"Satish Chander Kunwar","email":"satishchander.kunwar@effem.com","durasi_asli":"20 Juli 2026 - 19 Januari 2027","mulai":"2026-07-20","selesai":"2027-01-19","hari":183},{"nim":"23102310015","nama":"Bryan Susandi","prodi":"BM","perusahaan":"Universitas Prasetiya Mulya","posisi":"Research Assistant","supervisor":"Yeftanus Antonio, Ph.D.","email":"yeftanus.antonio@prasetiyamulya.ac.id","durasi_asli":"18 Mei 2026 - 31 Desember 2026","mulai":"2026-05-18","selesai":"2026-12-31","hari":227},{"nim":"23102310016","nama":"Clara Michelle Aprila","prodi":"BM","perusahaan":"PT Bank Rakyat Indonesia Tbk","posisi":"Operation, Service, and E-channel Department (OSE)","supervisor":"Siti Solihah","email":"siti.solihah@corp.bri.co.id","durasi_asli":"03 Agustus 2026 - 03 Desember 2026","mulai":"2026-08-03","selesai":"2026-12-03","hari":122},{"nim":"23102310018","nama":"Denzel Christopher Raharjo","prodi":"BM","perusahaan":"Universitas Prasetiya Mulya","posisi":"Asisten Riset untuk Model Risiko Banjir Bapak Yeftanus Antonio","supervisor":"Yeftanus Antonio","email":"yeftanus.antonio@prasetiyamulya.ac.id","durasi_asli":"01 Mei 2026 - 31 Desember 2026","mulai":"2026-05-01","selesai":"2026-12-31","hari":244},{"nim":"23102310020","nama":"Elvilia Vitri Sanjaya","prodi":"BM","perusahaan":"SMAS St. Familia Wae Nakeng","posisi":"Pengajar","supervisor":"RD. Daniel Abdineri Ngabut, S.Fil","email":"deningabut24@gmail.com","durasi_asli":"24 Agustus 2026 - 31 Desember 2026","mulai":"2026-08-24","selesai":"2026-12-31","hari":129},{"nim":"23102310021","nama":"Indriani S Napitupulu","prodi":"BM","perusahaan":"PT DELTA SUKSES TEKNOLOGI","posisi":"Procurement Intern","supervisor":"Lidya Grace","email":"lidya.grace@dsutech.com","durasi_asli":"27 Juli 2026 - 27 Januari 2027","mulai":"2026-07-27","selesai":"2027-01-27","hari":184},{"nim":"23102310022","nama":"Irna Dumarta Manullang","prodi":"BM","perusahaan":"PT AJ Central Asia Raya","posisi":"Financial Quality Control","supervisor":"Devy Natalia","email":"devy.natalia@car.co.id","durasi_asli":"10 Agustus 2026 - 19 Desember 2026","mulai":"2026-08-10","selesai":"2026-12-19","hari":131},{"nim":"23102310023","nama":"Jason Lymandjaja","prodi":"BM","perusahaan":"PT Infracell Nusatama","posisi":"Finance & Accounting","supervisor":"Anastasia Renny","email":"anastasia.renny@infracell.net","durasi_asli":"01 Agustus 2026 - 30 Desember 2026","mulai":"2026-08-01","selesai":"2026-12-30","hari":151},{"nim":"23102310024","nama":"Jonathan Ivander Liem","prodi":"BM","perusahaan":"Hishiro","posisi":"Marketing","supervisor":"Kumar Vaibhav","email":"hishiro.id@gmail.com","durasi_asli":"6 Agustus - 30 November 2026","mulai":"2026-08-06","selesai":"2026-11-30","hari":116},{"nim":"23102310025","nama":"Jonathan Jose Pranata","prodi":"BM","perusahaan":"BFI Finance","posisi":"Branch System & Reporting Internship","supervisor":"Windy Aulia","email":"windy.aulia@bfi.co.id","durasi_asli":"20 Juli 2026 - 31 Oktober 2026","mulai":"2026-07-20","selesai":"2026-10-31","hari":103},{"nim":"23102310026","nama":"Kelly Zunessa","prodi":"BM","perusahaan":"PT Sumber Alfaria Trijaya, Tbk.","posisi":"Marketing Data Analyst","supervisor":"Yustika Pratiwi","email":"yrpratiwi@sat.co.id","durasi_asli":"3 Agustus 2026  - 2 Februari 2027","mulai":"2026-08-03","selesai":"2027-02-02","hari":183},{"nim":"23102310031","nama":"Maria Safitri Surmiati","prodi":"BM","perusahaan":"PT GEA Westfalia Separator Indonesia","posisi":"Contract Administrator","supervisor":"Fany Handari","email":"Fany.Handari@gea.com","durasi_asli":"18 Agustus 2026 - 21 Desember 2026","mulai":"2026-08-18","selesai":"2026-12-21","hari":125},{"nim":"23102310032","nama":"Mey Lani Faransiska Situmorang","prodi":"BM","perusahaan":"PT. GEA Westfalia Separator Indonesia","posisi":"Finance & Accounting Intern","supervisor":"Ajeng Rahmianingsih","email":"ajeng.Rahmianingsih@gea.com","durasi_asli":"03 Agustus 2026 - 03 Desember 2026","mulai":"2026-08-03","selesai":"2026-12-03","hari":122},{"nim":"23102310034","nama":"Nicholas Benedict Bhismaputra Kunaryo","prodi":"BM","perusahaan":"PT Kliring Penjaminan Efek Indonesia","posisi":"Risk Analyst","supervisor":"Steven Soewignjo","email":"steven.soewignjo@idclear.co.id","durasi_asli":"13 Juli 2026 - 12 Oktober 2026","mulai":"2026-07-13","selesai":"2026-10-12","hari":91},{"nim":"23102310036","nama":"Paris Della Budiman","prodi":"BM","perusahaan":"PT Bank Central Asia","posisi":"KCFG Sustainability","supervisor":"Belum diberikan","email":"Belum diberikan","durasi_asli":"31 Agustus 2026 - 31 Desember 2026","mulai":"2026-08-31","selesai":"2026-12-31","hari":122},{"nim":"23102310037","nama":"Patricia Vanessa Lim","prodi":"BM","perusahaan":"BRI LIFE","posisi":"Experience Study Intern","supervisor":"Stanley Pratama","email":"stanley.pratama@brilife.co.id","durasi_asli":"4 Agustus 2026 - 31 Oktober 2026","mulai":"2026-08-04","selesai":"2026-10-31","hari":88},{"nim":"23102310038","nama":"Phylicia Eriko Yang","prodi":"BM","perusahaan":"PT SUMBER ALAM JAYA PERKASA","posisi":"Finance Intern","supervisor":"Mariani","email":"sajperkasa4228@gmail.com","durasi_asli":"03 Agustus 2026 - 31 Desember 2026","mulai":"2026-08-03","selesai":"2026-12-31","hari":150},{"nim":"23102310040","nama":"Putu Arismadi","prodi":"BM","perusahaan":"MSIG General Insurance","posisi":"Strategy Department - Marketing Strategy Planning Section - Market Research Analysis Intern","supervisor":"Rizky Armanda","email":"rizky_armanda@id.msig-asia.com","durasi_asli":"13 Juli 2026 - 13 November 2026","mulai":"2026-07-13","selesai":"2026-11-13","hari":123},{"nim":"23102310041","nama":"Rahma Fitriani","prodi":"BM","perusahaan":"University of Western Ontario","posisi":"Exchange","supervisor":"Dr. Katsu Goda","email":"kgoda2@uwo.ca","durasi_asli":"01 September 2026 - 31 Desember 2026","mulai":"2026-09-01","selesai":"2026-12-31","hari":121},{"nim":"23102310043","nama":"Theodora Sabrina","prodi":"BM","perusahaan":"University of Western Ontario","posisi":"Exchange","supervisor":"","email":"","durasi_asli":"01 September 2026 - 31 Desember 2026","mulai":"2026-09-01","selesai":"2026-12-31","hari":121},{"nim":"23102310044","nama":"Velis Setyani Pangesti","prodi":"BM","perusahaan":"PT Wasteforchange Alam Indonesia","posisi":"Corporate Finance Analyst Intern","supervisor":"Ariyanto Buchori","email":"ariyanto.buchori@waste4change.com","durasi_asli":"10 Agustus - 10 Desember 2026","mulai":"2026-08-10","selesai":"2026-12-10","hari":122},{"nim":"23602310004","nama":"Mugisa Leonardi","prodi":"PDI","perusahaan":"PT Jati Makmur Mas","posisi":"Packaging Specialist","supervisor":"Fayola Geraldine","email":"jatimakmurmaspt@gmail.com","durasi_asli":"25 Mei 2026 - 31 Desember 2026","mulai":"2026-05-25","selesai":"2026-12-31","hari":220},{"nim":"23602310005","nama":"Natanael Graciando Laymena","prodi":"PDI","perusahaan":"PT Vivere Multi Kreasi","posisi":"Graphic Design Intern","supervisor":"Alvernia Andhina","email":"alvernia.andhina@idemu.com","durasi_asli":"28 Juli 2026 - 27 Januari 2027","mulai":"2026-07-28","selesai":"2027-01-27","hari":183},{"nim":"23602310006","nama":"Nur Fatwa Tajuddin","prodi":"PDI","perusahaan":"CV Kupu Sutera","posisi":"Product Development Intern","supervisor":"R. Aditya Suryo Guritno","email":"kupusutera.id@gmail.com","durasi_asli":"08 juni 2026 - 1 januari 2027","mulai":"2026-06-08","selesai":"2027-01-01","hari":207},{"nim":"23202310001","nama":"Alexandra Sidney Budiawan","prodi":"FBT","perusahaan":"PT URC Indonesia","posisi":"QHSE","supervisor":"Irfan Pujiartono","email":"irfan.pujiartono@urc.co.id","durasi_asli":"01 Juli 2026 - 30 September 2026","mulai":"2026-07-01","selesai":"2026-09-30","hari":91},{"nim":"23202310002","nama":"Aprilia Putri Nasution","prodi":"FBT","perusahaan":"PT. Ekacitta Dian Persada","posisi":"Food Intern","supervisor":"Karina Gondowardono","email":"karina.gondowardono@ekacitta.co.id","durasi_asli":"13 Juli 2026 - 27 November 2026","mulai":"2026-07-13","selesai":"2026-11-27","hari":137},{"nim":"23202310003","nama":"Betania Klarita Barimbing","prodi":"FBT","perusahaan":"","posisi":"","supervisor":"","email":"","durasi_asli":"Konversi PIMNAS","mulai":"2026-06-02","selesai":"2026-10-02","hari":122},{"nim":"23202310004","nama":"Cecillia Huang","prodi":"FBT","perusahaan":"PT. Olam Food Ingredients","posisi":"Quality Assurance","supervisor":"Florencia Angel Wijaya","email":"florencia@ofi.com","durasi_asli":"13 Juli 2026 - 12 Oktober 2026","mulai":"2026-07-13","selesai":"2026-10-12","hari":91},{"nim":"23202310005","nama":"Christella Eunice Candra","prodi":"FBT","perusahaan":"PT Neopangan Selaras Indonesia","posisi":"Quality Control / Research & Development","supervisor":"Alberto Septian Wijaya","email":"alberto@neofoodindonesia.com","durasi_asli":"01 Juni 2026 - 07 Agustus 2026","mulai":"2026-06-01","selesai":"2026-08-07","hari":67},{"nim":"23202310006","nama":"Felicia Novia Alverina","prodi":"FBT","perusahaan":"Glass Studios Eyewear","posisi":"Brand + Social Media Marketing","supervisor":"Puspita Nurfadhillah","email":"puspita@glassstudioseyewear.com","durasi_asli":"10 Juni 2026 - 10 Agustus 2026","mulai":"2026-06-10","selesai":"2026-08-10","hari":61},{"nim":"23202310007","nama":"Felycia Angellia","prodi":"FBT","perusahaan":"PT Indofood Fortuna Makmur","posisi":"Quality Control Intern","supervisor":"Tresna Raga Salira","email":"tresna.raga@icbp.indofood.co.id","durasi_asli":"08 Juni 2026 - 07 Agustus 2026","mulai":"2026-06-08","selesai":"2026-08-07","hari":60},{"nim":"23202310008","nama":"Gracia Angelina Wan","prodi":"FBT","perusahaan":"","posisi":"","supervisor":"","email":"","durasi_asli":"","mulai":"2026-07-01","selesai":"2026-10-31","hari":122},{"nim":"23202310009","nama":"Haneen Basori","prodi":"FBT","perusahaan":"PT URC Indonesia","posisi":"Research and Development","supervisor":"Sri Wening Utami","email":"wening.utami@urc.co.id","durasi_asli":"18 Mei 2026 - 25 September 2026","mulai":"2026-05-18","selesai":"2026-09-25","hari":130},{"nim":"23202310010","nama":"Hansel Sutioso","prodi":"FBT","perusahaan":"","posisi":"","supervisor":"","email":"","durasi_asli":"","mulai":"2025-06-15","selesai":"2025-08-31","hari":77},{"nim":"23202310011","nama":"Hansley Richie","prodi":"FBT","perusahaan":"PT Chemco Prima Mandiri","posisi":"Laboran peneliti riset perusahaan","supervisor":"apt. Yustine Ardina, M.Si","email":"Expert.innovationresearch@gmail.com","durasi_asli":"13 Juli 2026 - 31 desember 2026","mulai":"2026-07-13","selesai":"2026-12-31","hari":171},{"nim":"23602310012","nama":"Hariest Ayubi","prodi":"FBT","perusahaan":"PT Halim Sakti Pratama","posisi":"Technical / Research and Developement","supervisor":"Stephen Bastian Prayogo","email":"stephen@halim-sakti.com","durasi_asli":"02 Juni 2026 - 31 Agustus 2026","mulai":"2026-06-02","selesai":"2026-08-31","hari":90},{"nim":"23202310013","nama":"I Kadek Adi Indrawan","prodi":"FBT","perusahaan":"Abbott Labolatories","posisi":"Food Regulatory Affairs","supervisor":"Siagian Merry Linda","email":"merrylinda.siagian@abbott.com","durasi_asli":"01 Juni 2026 - 01 September 2026","mulai":"2026-06-01","selesai":"2026-09-01","hari":92},{"nim":"23202310014","nama":"ILHAM RAMADON","prodi":"FBT","perusahaan":"Kalbe Nutritionals (PT Sanghiang Perkasa)","posisi":"Packaging Development","supervisor":"Devi Ardelia Purbonisari","email":"devi.ardelia@kalbenutritionals.com","durasi_asli":"15 Juni 2026 - 14 Desember 2026","mulai":"2026-06-15","selesai":"2026-12-14","hari":182},{"nim":"23202310015","nama":"Jolie Verlita","prodi":"FBT","perusahaan":"Babykyo Matcha","posisi":"Research & Development","supervisor":"Griselda Feliciandria","email":"griselda.feliciandria@yahoo.com","durasi_asli":"15 Juni 2026 - Desember 2026","mulai":"2026-06-15","selesai":"2026-12-31","hari":199},{"nim":"23202310016","nama":"Kelvin Then","prodi":"FBT","perusahaan":"PT chemco prima abadi","posisi":"Laboran Riset","supervisor":"apt. Yustine Ardina, M.Si","email":"Expert.innovationresearch@gmail.com","durasi_asli":"06 Juli 2026 - Desember 2026","mulai":"2026-07-06","selesai":"2026-12-31","hari":178},{"nim":"23202310017","nama":"Kent Pranata Tjandra","prodi":"FBT","perusahaan":"PT Indofood Fortuna Makmur","posisi":"Quality Control","supervisor":"Tresna Raga Salira","email":"tresna.raga@icbp.indofood.co.id","durasi_asli":"08 Juni 2026 - 07 Agustus 2026","mulai":"2026-06-08","selesai":"2026-08-07","hari":60},{"nim":"23202310018","nama":"Lina Rahmawati","prodi":"FBT","perusahaan":"Universal Robina Corporation Indonesia","posisi":"Research and Development","supervisor":"Ade Zulkifli Mustari","email":"ade.mustari@urc.co.id","durasi_asli":"18 Mei 2026 - 25 Mei 2026","mulai":"2026-05-18","selesai":"2026-05-25","hari":7},{"nim":"23202310019","nama":"Made Grazielle Hillary Yadi","prodi":"FBT","perusahaan":"PT Japfa Food Indonesia","posisi":"Marketing B2B VAM","supervisor":"Citra Ramadhani","email":"citra.ramadhani@japfa.com","durasi_asli":"8 Juni 2026 - 7 Desember 2026","mulai":"2026-06-08","selesai":"2026-12-07","hari":182},{"nim":"23202310020","nama":"Malvin Widyanto Tjoa","prodi":"FBT","perusahaan":"PT IMCD INDONESIA","posisi":"RnD Technical Food","supervisor":"Jeremia Kevin","email":"jeremia.kevin@imcd.co.id","durasi_asli":"18 Mei 2026 - 18 Oktober 2026","mulai":"2026-05-18","selesai":"2026-10-18","hari":153},{"nim":"23202310021","nama":"Nathania Angelica Kristiawan","prodi":"FBT","perusahaan":"PT Halim Sakti Pratama","posisi":"Research and Development (Technical Application) Intern","supervisor":"Stephen Bastian Prayogo","email":"stephen@halim-sakti.com","durasi_asli":"02 Juni 2026 - 06 November 2026","mulai":"2026-06-02","selesai":"2026-11-06","hari":157},{"nim":"23202310022","nama":"Niken Estri Rahmawati","prodi":"FBT","perusahaan":"PT Ekacitta Dian Persada","posisi":"Food Intern","supervisor":"Karina Gondowardono","email":"karina.gondowardono@ekacitta.co.id","durasi_asli":"13 Juli 2026 - 27 November 2026","mulai":"2026-07-13","selesai":"2026-11-27","hari":137},{"nim":"23202310023","nama":"Raphael Nathanael Santosa","prodi":"FBT","perusahaan":"PT KURNIAMITRA DUTA SENTOSA","posisi":"import and purchase (Import regulatory)","supervisor":"Dewi Arfika","email":"import.01@kmds.co.id","durasi_asli":"08 Juni 2026 - 15 November 2026","mulai":"2026-06-08","selesai":"2026-11-15","hari":160},{"nim":"23202310024","nama":"Yunna Teodor","prodi":"FBT","perusahaan":"PT Greshindo Aroma","posisi":"Research & Development","supervisor":"Marisca","email":"marisca@sinarpagifoods.id","durasi_asli":"08 Juni 2026 - 08 September 2026","mulai":"2026-06-08","selesai":"2026-09-08","hari":92},{"nim":"23502310001","nama":"Abdul Aziz Setiadi Haryanto","prodi":"DBT","perusahaan":"University of Carleton","posisi":"Exchange","supervisor":"James Green","email":"JamesGreen@cunet.carleton.ca","durasi_asli":"01 September 2026 - 31 Desember 2026","mulai":"2026-09-01","selesai":"2026-12-31","hari":121},{"nim":"23502310002","nama":"Allegra Wijaya","prodi":"DBT","perusahaan":"PT Digital Mediatama Maxima","posisi":"Marketing Intern","supervisor":"Muhammad Fahmi Alby","email":"fahmialby@gmail.com","durasi_asli":"02 Juni 2026 - 02 Oktober 2026","mulai":"2026-06-02","selesai":"2026-10-02","hari":122},{"nim":"23502310003","nama":"Branden Axton Aurelius","prodi":"DBT","perusahaan":"PT SURYA TEKNIK ABADI","posisi":"Web designer & Marketing","supervisor":"Ibu Avril","email":"Avril.aurelia0317@gmail.com","durasi_asli":"10 September 2026 - 13 January 2027","mulai":"2026-09-10","selesai":"2027-01-13","hari":125},{"nim":"23502310004","nama":"Celine Davina Masko","prodi":"DBT","perusahaan":"Pt Sinwen Anugerah Alpha Omega","posisi":"Graphic Design Intern","supervisor":"Shifa Tasya Putri","email":"shifatasyaputri@gmail.com","durasi_asli":"2 Juni 2026 - 2 September 2026","mulai":"2026-06-02","selesai":"2026-09-02","hari":92},{"nim":"23502310005","nama":"Doffannoel Claudio Sihotang","prodi":"DBT","perusahaan":"PT Sinergi Merah Putih Technology","posisi":"Backend Developer","supervisor":"Alfina Sukma Kinanti","email":"a.kinanti@sinergimp.co.id","durasi_asli":"25 Juli - 25 November 2026","mulai":"2026-07-25","selesai":"2026-11-25","hari":123},{"nim":"23502310007","nama":"Felicia Trisa Usboko","prodi":"DBT","perusahaan":"MOUV Pilates","posisi":"Social Media Specialist","supervisor":"Adeline Pratiwi Tangtra","email":"adelinetangtra@gmail.com","durasi_asli":"09 Maret 2026 - 09 Desember 2026","mulai":"2026-03-09","selesai":"2026-12-09","hari":275},{"nim":"23502310008","nama":"Felix Tan","prodi":"DBT","perusahaan":"Gudang Kripto","posisi":"Software Engineering Intern","supervisor":"Rey Wilfred Rasidi","email":"rey@finbiz.tech","durasi_asli":"15 Mei 2026 - 14 September 2026","mulai":"2026-05-15","selesai":"2026-09-14","hari":122},{"nim":"23502310009","nama":"George Vigo Valentino Djohan","prodi":"DBT","perusahaan":"PT Farida Tangguh Energy","posisi":"IT / System Development Intern","supervisor":"Ahmad Rido","email":"ftangguhenergy@gmail.com","durasi_asli":"06 Juli 2026 - 20 November 2026","mulai":"2026-07-06","selesai":"2026-11-20","hari":137},{"nim":"23502310010","nama":"Gerald Julian Kemmanandro","prodi":"DBT","perusahaan":"PT. Mitra Pinasthika Mustika Tbk","posisi":"IT Division (Digital Enablement)","supervisor":"Pak Aryes Trilaksono","email":"aryes.trilaksono@mpm-ho.com","durasi_asli":"01 Juli 2026 - 31 Oktober 2026","mulai":"2026-07-01","selesai":"2026-10-31","hari":122},{"nim":"23502310011","nama":"Habil Dwi Atmika","prodi":"DBT","perusahaan":"PT VINIX SEVEN AURUM","posisi":"Data Analyst","supervisor":"Atina Cahyani","email":"vinix7.idn@gmail.com","durasi_asli":"18 Agustus 2026 - 30 Desember 2026","mulai":"2026-08-18","selesai":"2026-12-30","hari":134},{"nim":"23502310012","nama":"I Dewa Made Adi Kresna","prodi":"DBT","perusahaan":"Fincapes University of Waterloo","posisi":"IoT Prototyping and Assembly Assistant","supervisor":"Mawardi Muhammad","email":"mawardi.muhammad@uwaterloo.ca","durasi_asli":"15 June 2025 - 31 Agustus 2025","mulai":"2025-06-15","selesai":"2025-08-31","hari":77},{"nim":"23502310013","nama":"Iqbal Zahid Abdullah Haris","prodi":"DBT","perusahaan":"Treasury Group Bank Mandiri","posisi":"IT Internship / IT-related Project","supervisor":"Hendianto Pratama Syuhada","email":"hendianto.pratama@bankmandiri.co.id","durasi_asli":"18 Agustus 2026 - 19 Februari 2027","mulai":"2026-08-18","selesai":"2027-02-19","hari":185},{"nim":"23502310014","nama":"Ivan Bunardi Junganda","prodi":"DBT","perusahaan":"Blessing House Agency","posisi":"Digital marketing intern","supervisor":"Rei Hendrawan","email":"hendrawanrei@gmail.com","durasi_asli":"03 Agustus 2026 - 14 November 2026","mulai":"2026-08-03","selesai":"2026-11-14","hari":103},{"nim":"23502310015","nama":"Joseph Alexander Go","prodi":"DBT","perusahaan":"PT Adaro Mining Technologies","posisi":"Business Analyst Intern","supervisor":"Dave Julianno Tandra","email":"dave.tandra@adaro.com","durasi_asli":"01 Juli 2026 - 30 November 2026","mulai":"2026-07-01","selesai":"2026-11-30","hari":152},{"nim":"23502310016","nama":"Josh Mikhaelli Hartono","prodi":"DBT","perusahaan":"Kantor Ko-Provos 1 Universitas Prasetiya Mulya","posisi":"UI/UX Designer","supervisor":"Ibu Christiana Yosevina","email":"yosevina.tercia@prasetiyamulya.ac.id","durasi_asli":"3 Agustus 2026 - 3 Februari 2027","mulai":"2026-08-03","selesai":"2027-02-03","hari":184},{"nim":"23502310018","nama":"Mochammad Malik Putra Kurniawan","prodi":"DBT","perusahaan":"PT Starvo Global Energi","posisi":"Fullstack Developer","supervisor":"Julina","email":"julina@moizasia.com","durasi_asli":"02 Juni 2026 - 31 Desember 2026","mulai":"2026-06-02","selesai":"2026-12-31","hari":212},{"nim":"23502310019","nama":"Natalia Dwi Wulandari","prodi":"DBT","perusahaan":"Digital Mediatama Maxima","posisi":"RnD","supervisor":"Pak Hariyanto","email":"hari@dmmxcorp.com","durasi_asli":"2 Juni 2026 - 2 Oktober 2026","mulai":"2026-06-02","selesai":"2026-10-02","hari":122},{"nim":"23502310020","nama":"Natania Faylinn Anggunjaya","prodi":"DBT","perusahaan":"PT Anabatic Technologies Tbk","posisi":"ERP Functional Analyst Internship","supervisor":"Anizha Reisda Novihandika","email":"anizha.novihandika@anabatic.com","durasi_asli":"3 Agustus 2026 - 31 Januari 2027","mulai":"2026-08-03","selesai":"2027-01-31","hari":181},{"nim":"23502310022","nama":"Owen Christian Soegiarto","prodi":"DBT","perusahaan":"Digital Mediatama Maxima Tbk PT","posisi":"RnD UI/UX Designer","supervisor":"HARIYANTO","email":"hari@dmmxcorp.com","durasi_asli":"02 Juni 2026 - 02 Oktober 2026","mulai":"2026-06-02","selesai":"2026-10-02","hari":122},{"nim":"23502310023","nama":"Priscilla Jasmine Kurniadi","prodi":"DBT","perusahaan":"PT Maotea Era Indonesia (Maotea)","posisi":"Social Media Specialist Intern","supervisor":"Weynie Juniar Wangsa","email":"weyniejnrwangsa@gmail.com","durasi_asli":"April 2026 - Oktober 2026","mulai":"2026-04-01","selesai":"2026-10-31","hari":213},{"nim":"23502310024","nama":"Rahma Sari","prodi":"DBT","perusahaan":"ASMINDO","posisi":"Web Developer","supervisor":"Fitri Astuti, S.H","email":"fitrias1601@gmail.com","durasi_asli":"20 Juli 2026 - 19 Oktober 2026","mulai":"2026-07-20","selesai":"2026-10-19","hari":91},{"nim":"23502310025","nama":"Regine Angelina Halim","prodi":"DBT","perusahaan":"Carleton University (Canada ASEAN Seed Scholarship)","posisi":"Visiting Researcher (Canada ASEAN Seed Scholarship)","supervisor":"Radovan Vadovič","email":"radovan.vadovic@carleton.ca","durasi_asli":"15 September 2026 - 29 Desember 2026","mulai":"2026-09-15","selesai":"2026-12-29","hari":105},{"nim":"23502310026","nama":"Samuel Jethro Hendrawan","prodi":"DBT","perusahaan":"PT Ascendiz Solusi Teknologi","posisi":"Quality Analyst Tester","supervisor":"Nadia Paramitha","email":"nadia.paramitha@ascendiz.id","durasi_asli":"15 Juni 2026 - 15 Desember 2026","mulai":"2026-06-15","selesai":"2026-12-15","hari":183},{"nim":"23502310027","nama":"Sophia Josephine Handoko","prodi":"DBT","perusahaan":"Paragon Corp","posisi":"Commercial","supervisor":"Cynthia Gunawan","email":"cynthia.gunawan@paracorpgroup.com","durasi_asli":"21 Mei 2026 - 20 November 2026","mulai":"2026-05-21","selesai":"2026-11-20","hari":183},{"nim":"23502310028","nama":"Stevano Ian Fernandy","prodi":"DBT","perusahaan":"PT. Gudang Kripto Indonesia","posisi":"Software Engineer","supervisor":"Rey Wilfred Prasudi","email":"rey@finbiz.tech","durasi_asli":"23 Juli 2026 - 25 November 2026","mulai":"2026-07-23","selesai":"2026-11-25","hari":125},{"nim":"23502310029","nama":"Steven Valerian","prodi":"DBT","perusahaan":"CV Bang Mister","posisi":"Web Developer","supervisor":"Medelin Alviany","email":"medelin999@gmail.com","durasi_asli":"1 Agustus - 30 November 2026","mulai":"2026-08-01","selesai":"2026-11-30","hari":121},{"nim":"23502310030","nama":"Sylvia Emily Binbyak Manpioper","prodi":"DBT","perusahaan":"ASMINDO (Asosiasi Industri Permebelan dan Kerajinan Indonesia)","posisi":"Website Development","supervisor":"Fitri Astuti","email":"fitrias1601@gmail.com","durasi_asli":"01 Juli 2026 - 30 September 2026","mulai":"2026-07-01","selesai":"2026-09-30","hari":91},{"nim":"23502310031","nama":"Ulfia Rahma","prodi":"DBT","perusahaan":"PT. Mattel Indonesia","posisi":"Digital Transformation","supervisor":"Wahyu Dian Cahya","email":"wahyudian.cahya@mattel.com","durasi_asli":"3 Agustus 2026 - 2 Februari 2027","mulai":"2026-08-03","selesai":"2027-02-02","hari":183},{"nim":"23502310032","nama":"Wildan Al Bana","prodi":"DBT","perusahaan":"Jantrakakikaki","posisi":"Social Media Specialist/Analyst (Marketing)","supervisor":"M. Lucky Afandi","email":"lafandi@jantragroup.com","durasi_asli":"10 Agustus 2026 - 8 November 2026","mulai":"2026-08-10","selesai":"2026-11-08","hari":90},{"nim":"23502310033","nama":"Ni Wayan Deasi Sastra Astiti","prodi":"DBT","perusahaan":"Treasury Group Bank Mandiri","posisi":"IT Internship / IT-related Project","supervisor":"Hendianto Pratama Syuhada","email":"hendianto.pratama@bankmandiri.co.id","durasi_asli":"18 Agustus 2026 - 19 Februari 2027","mulai":"2026-08-18","selesai":"2027-02-19","hari":185},{"nim":"23602310002","nama":"Adinda Ramadhani","prodi":"PDI","perusahaan":"","posisi":"","supervisor":"","email":"","durasi_asli":"","mulai":"2026-06-08","selesai":"2027-01-01","hari":207}];
+const TODAY=new Date(); TODAY.setHours(0,0,0,0);
+const BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const DEFAULTS={mode:'auto',utsUniv:'',uasUniv:'',utsPct:50,uasOff:0,lead:7,deadline:3,linkUts:'bit.ly/EvaluasiUTSCoop',linkUas:'bit.ly/EvaluasiUASCoop'};
+let settings={...DEFAULTS};
+let STUDENTS=[]; let hasStorage=!!(window.storage&&window.storage.get); let idc=0;
+
+/* ============ DATE PARSER ============ */
+const MONTHS={januari:1,jan:1,january:1,februari:2,feb:2,february:2,pebruari:2,maret:3,mar:3,march:3,april:4,apr:4,mei:5,may:5,juni:6,jun:6,june:6,juli:7,jul:7,july:7,agustus:8,agu:8,agt:8,aug:8,august:8,september:9,sep:9,sept:9,oktober:10,okt:10,oct:10,october:10,november:11,nov:11,desember:12,des:12,dec:12,december:12};
+const MNAMES=Object.keys(MONTHS).sort((a,b)=>b.length-a.length);
+function parseTok(tok){tok=String(tok).toLowerCase().replace(/\(.*?\)/g,'').trim();if(!tok)return null;
+  let day=null,month=null,year=null;const ym=tok.match(/\b(20\d{2})\b/);if(ym)year=+ym[1];
+  for(const nm of MNAMES){if(new RegExp('\\b'+nm+'\\b').test(tok)){month=MONTHS[nm];break;}}
+  const dm=tok.match(/\b(\d{1,2})\b/);if(dm)day=+dm[1];if(month==null)return null;return {day,month,year};}
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function parseDurasi(text){if(!text)return {mulai:'',selesai:'',note:'kosong'};
+  let s=String(text).trim();let s2=s.replace(/\(.*?\)/g,'').trim();
+  if(!/[-–]/.test(s2))return {mulai:'',selesai:'',note:'bukan rentang'};
+  const i=s2.search(/[-–]/);const a=parseTok(s2.slice(0,i)),b=parseTok(s2.slice(i+1));
+  if(!a||!b)return {mulai:'',selesai:'',note:'tak terbaca'};
+  if(a.year==null)a.year=b.year;if(b.year==null)b.year=a.year;
+  if(a.day==null)a.day=1;if(b.day==null)b.day=new Date(b.year,b.month,0).getDate();
+  if(a.year==null||b.year==null)return {mulai:'',selesai:'',note:'tahun tak diketahui'};
+  let sd=new Date(a.year,a.month-1,a.day),ed=new Date(b.year,b.month-1,b.day);
+  if(sd>ed){const s3=new Date(a.year-1,a.month-1,a.day);if(s3<ed)sd=s3;}
+  return {mulai:iso(sd),selesai:iso(ed),note:''};}
+function hariOf(m,s){const a=idDate(m),b=idDate(s);return (a&&b)?Math.round((b-a)/86400000):null;}
+
+/* ============ MODEL / STORAGE ============ */
+function normalize(s){return Object.assign({id:s.id||('stu-'+Date.now().toString(36)+'-'+(++idc)),nim:'',nama:'',prodi:'',perusahaan:'',posisi:'',supervisor:'',email:'',durasi_asli:'',mulai:'',selesai:'',hari:null,utsSent:false,uasSent:false,utsFilled:false,uasFilled:false,lapUts:'',lapAkhir:''},s);}
+function byId(id){return STUDENTS.find(x=>x.id===id);}
+async function lget(k){if(!hasStorage)return null;try{const r=await window.storage.get(k);return r&&r.value?JSON.parse(r.value):null;}catch(e){return null;}}
+async function lset(k,v){if(!hasStorage)return;try{await window.storage.set(k,JSON.stringify(v));}catch(e){}}
+let pT=null;
+function persistLocal(){if(pT)clearTimeout(pT);pT=setTimeout(()=>lset('coop:students',STUDENTS),300);}
+async function syncOne(s){persistLocal();if(SB.connected){try{await SB.client.from(SB.table).upsert(rowFrom(s));}catch(e){cloud('err','Gagal sinkron: '+e.message);}}}
+async function removeOne(id){persistLocal();if(SB.connected){try{await SB.client.from(SB.table).delete().eq('id',id);}catch(e){cloud('err',e.message);}}}
+async function syncAll(){persistLocal();if(SB.connected){try{for(let i=0;i<STUDENTS.length;i+=200){await SB.client.from(SB.table).upsert(STUDENTS.slice(i,i+200).map(rowFrom));}cloud('on','Tersinkron');}catch(e){cloud('err',e.message);}}}
+async function persistSettings(){await lset('coop:settings',settings);document.getElementById('saveState').textContent=hasStorage?'✓ Pengaturan tersimpan otomatis':'⚠ Penyimpanan lokal tidak aktif';}
+
+/* ============ SUPABASE ============ */
+/* ============================================================
+   >>> KONFIGURASI SUPABASE (isi di sini, bukan lewat aplikasi) <<<
+   1. Buat project gratis di supabase.com → Settings → API,
+      salin Project URL & anon public key ke dua baris di bawah.
+   2. Jalankan SQL berikut di Supabase → SQL Editor:
+
+      create table if not exists coop_students (
+        id text primary key,
+        nim text, nama text, prodi text, perusahaan text, posisi text,
+        supervisor text, email text, durasi_asli text,
+        mulai date, selesai date, hari int,
+        uts_sent boolean default false, uas_sent boolean default false,
+        uts_filled boolean default false, uas_filled boolean default false,
+        lap_uts text, lap_akhir text,
+        updated_at timestamptz default now()
+      );
+      alter table coop_students enable row level security;
+      create policy "coop all" on coop_students
+        for all using (true) with check (true);
+
+   3. Simpan file. Jika kedua nilai di bawah kosong, aplikasi
+      otomatis memakai penyimpanan lokal (tanpa cloud).
+   ============================================================ */
+const SUPABASE_URL = "";   // contoh: "https://abcd1234.supabase.co"
+const SUPABASE_ANON_KEY = ""; // contoh: "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+
+const SB={client:null,url:SUPABASE_URL.trim(),key:SUPABASE_ANON_KEY.trim(),table:'coop_students',connected:false};
+function rowFrom(s){return {id:s.id,nim:s.nim,nama:s.nama,prodi:s.prodi,perusahaan:s.perusahaan,posisi:s.posisi,supervisor:s.supervisor,email:s.email,durasi_asli:s.durasi_asli,mulai:s.mulai||null,selesai:s.selesai||null,hari:s.hari,uts_sent:!!s.utsSent,uas_sent:!!s.uasSent,uts_filled:!!s.utsFilled,uas_filled:!!s.uasFilled,lap_uts:s.lapUts,lap_akhir:s.lapAkhir,updated_at:new Date().toISOString()};}
+function toStudent(r){return normalize({id:r.id,nim:r.nim||'',nama:r.nama||'',prodi:r.prodi||'',perusahaan:r.perusahaan||'',posisi:r.posisi||'',supervisor:r.supervisor||'',email:r.email||'',durasi_asli:r.durasi_asli||'',mulai:r.mulai||'',selesai:r.selesai||'',hari:r.hari,utsSent:!!r.uts_sent,uasSent:!!r.uas_sent,utsFilled:!!r.uts_filled,uasFilled:!!r.uas_filled,lapUts:r.lap_uts||'',lapAkhir:r.lap_akhir||''});}
+function cloud(state,txt){const p=document.getElementById('cloudPill');p.className='cloud'+(state==='on'?' on':state==='err'?' err':'');
+  document.getElementById('cloudTxt').textContent=txt||(state==='on'?'Supabase':state==='err'?'Sync error':'Lokal');}
+async function sbConnect(pull){
+  if(!SB.url||!SB.key){cloud('err','Isi URL & key dulu');return false;}
+  if(!window.supabase){cloud('err','Library Supabase gagal dimuat (mungkin diblokir di pratinjau)');return false;}
+  try{
+    SB.client=window.supabase.createClient(SB.url,SB.key);
+    const {error}=await SB.client.from(SB.table).select('id').limit(1);
+    if(error)throw error;
+    SB.connected=true;
+    if(pull){const {data,error:e2}=await SB.client.from(SB.table).select('*');if(e2)throw e2;
+      if(data&&data.length){STUDENTS=data.map(toStudent);persistLocal();}
+      else{await syncAll();}}
+    cloud('on','Tersinkron ('+STUDENTS.length+')');refreshProdiFilter();renderHome();renderList();return true;
+  }catch(e){SB.connected=false;cloud('err','Gagal: '+(e.message||e));return false;}
+}
+
+/* ============ HELPERS ============ */
+function idDate(x){if(!x)return null;const [y,m,d]=String(x).split('-').map(Number);if(!y||!m||!d)return null;const dt=new Date(y,m-1,d);dt.setHours(0,0,0,0);return dt;}
+function fmtID(dt){if(!dt)return '—';return dt.getDate()+' '+BULAN[dt.getMonth()]+' '+dt.getFullYear();}
+function fmtShort(dt){if(!dt)return '—';return dt.getDate()+' '+BULAN[dt.getMonth()].slice(0,3)+' '+dt.getFullYear();}
+function addDays(dt,n){const x=new Date(dt);x.setDate(x.getDate()+n);return x;}
+function daysBetween(a,b){return Math.round((b-a)/86400000);}
+function durText(s){const a=idDate(s.mulai),b=idDate(s.selesai);if(a&&b)return fmtID(a)+' – '+fmtID(b);return s.durasi_asli||'—';}
+function examDates(s){const a=idDate(s.mulai),b=idDate(s.selesai);
+  if(settings.mode==='univ'){return {uts:idDate(settings.utsUniv),uas:idDate(settings.uasUniv),a,b};}
+  if(!a||!b)return {uts:null,uas:null,a,b};const span=daysBetween(a,b);
+  return {uts:addDays(a,Math.round(span*settings.utsPct/100)),uas:addDays(b,-settings.uasOff),a,b};}
+function examStatus(s,kind){const ed=examDates(s);const target=kind==='uts'?ed.uts:ed.uas;
+  const filled=kind==='uts'?s.utsFilled:s.uasFilled;const sent=kind==='uts'?s.utsSent:s.uasSent;
+  if(filled)return {code:'filled',target};if(!target)return {code:'nodate',target};
+  const dleft=daysBetween(TODAY,target);if(sent)return {code:'sent',target,dleft};
+  if(dleft<0)return {code:'todo-over',target,dleft};if(dleft<=settings.lead)return {code:'todo-soon',target,dleft};
+  return {code:'todo-future',target,dleft};}
+function esc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+/* ============ EMAIL ============ */
+function honor(n){return n&&n.trim()?n.trim():'Bapak/Ibu';}
+function emailFor(s,kind){const isU=kind==='uts';
+  const label=isU?'Ujian Tengah Semester (UTS)':'Ujian Akhir Semester (UAS)';const tag=isU?'UTS':'UAS';
+  const link=isU?settings.linkUts:settings.linkUas;const deadline=fmtID(addDays(TODAY,settings.deadline));
+  const subj=`[${tag}] Permohonan Pengisian Evaluasi Magang/Internship a.n ${s.nama}`;
+  const body=`Kepada Yth.
+${honor(s.supervisor)}
+${s.perusahaan||'-'}
+di Tempat
+
+Sebelumnya kami mengucapkan terima kasih atas kesempatannya dalam menerima Mahasiswa kami untuk melakukan Magang/Internship di Instansi/Perusahaan Bapak/Ibu.
+
+Kami memohon kesediaan Bapak/Ibu untuk dapat meluangkan waktunya mengisi evaluasi ${label} untuk Mahasiswa kami selama melakukan Magang/Internship. Hasil evaluasi dari Bapak/Ibu kami butuhkan untuk kebutuhan penilaian internal dan tentunya sebagai perbaikan untuk Mahasiswa kami ke depannya dalam melakukan Magang/Internship.
+
+Data Mahasiswa :
+Nama   : ${s.nama}
+NIM    : ${s.nim||'-'}
+Posisi : ${s.posisi||'-'}
+Durasi : ${durText(s)}
+
+Berikut link untuk Evaluasi ${tag} : ${link}
+
+Kami harap Bapak/Ibu dapat mengisi evaluasi tersebut sampai dengan tanggal ${deadline}. Demikian kami sampaikan, atas perhatian dan kerjasamanya kami ucapkan terima kasih.`;
+  return {subj,body,to:s.email||'',deadline};}
+
+/* ============ HOME ============ */
+function computeReminders(){const list=[];
+  STUDENTS.forEach(s=>['uts','uas'].forEach(k=>{const es=examStatus(s,k);
+    if(['todo-soon','todo-over','sent'].includes(es.code)&&es.target)list.push({s,kind:k,...es});}));
+  const rank={'todo-over':0,'todo-soon':1,'sent':2};list.sort((a,b)=>(rank[a.code]-rank[b.code])||(a.target-b.target));return list;}
+function renderHome(){
+  document.getElementById('basisHint').textContent = settings.mode==='univ'
+    ? `Berdasarkan tanggal universitas: UTS ${settings.utsUniv?fmtShort(idDate(settings.utsUniv)):'(belum diisi)'}, UAS ${settings.uasUniv?fmtShort(idDate(settings.uasUniv)):'(belum diisi)'}.`
+    : 'Dihitung otomatis dari periode magang tiap mahasiswa.';
+  const rem=computeReminders();const ph=document.getElementById('pipHome');ph.textContent=rem.length;ph.classList.toggle('zero',rem.length===0);
+  let a1=0,a2=0,f1=0,f2=0;STUDENTS.forEach(s=>{if(s.utsSent)a1++;if(s.uasSent)a2++;if(s.utsFilled)f1++;if(s.uasFilled)f2++;});
+  const act=rem.filter(r=>r.code!=='sent').length;const N=STUDENTS.length||1;
+  const stat=(n,l,ex='',pct=null)=>`<div class="stat ${ex}"><div class="n">${n}</div><div class="l">${l}</div>${pct!=null?`<div class="bar"><i style="width:${pct}%"></i></div>`:''}</div>`;
+  document.getElementById('stats').innerHTML=stat(STUDENTS.length,'Total mahasiswa')+stat(act,'Perlu tindakan','act')+
+    stat(a1,'Email UTS terkirim','',Math.round(a1/N*100))+stat(a2,'Email UAS terkirim','',Math.round(a2/N*100))+
+    stat(f1,'UTS diisi supervisor','',Math.round(f1/N*100))+stat(f2,'UAS diisi supervisor','',Math.round(f2/N*100));
+  const box=document.getElementById('reminders');
+  if(!rem.length){box.innerHTML=`<div class="empty"><div class="ic">✓</div><b>Semua aman.</b><br>Tidak ada evaluasi yang perlu dikirim atau ditindaklanjuti saat ini.</div>`;return;}
+  const groups=[['todo-over','Lewat tenggat — segera kirim','overdue'],['todo-soon','Akan jatuh tempo','soon'],['sent','Terkirim — menunggu supervisor mengisi','wait']];
+  box.innerHTML=groups.map(([code,title,cls])=>{const items=rem.filter(r=>r.code===code);if(!items.length)return '';
+    return `<div class="rem-group"><div class="eyebrow">${title} <span class="cnt">· ${items.length}</span></div>`+
+      items.map(r=>{const tag=r.kind.toUpperCase();const dl=r.dleft;
+        let when=code==='sent'?`menunggu sejak dikirim`:(dl<0?`<span class="big">${-dl} hari</span> lewat`:(dl===0?`<span class="big">Hari ini</span>`:`<span class="big">H‑${dl}</span> lagi`));
+        const lbl=code==='sent'?'Ingatkan':'Tulis email';
+        return `<div class="rem ${cls}"><span class="type ${r.kind}">${tag}</span>
+          <div class="body"><div class="who">${esc(r.s.nama)}</div><div class="meta">${esc(r.s.perusahaan)||'—'} · Supervisor <b>${esc(r.s.supervisor)||'—'}</b> · target ${fmtShort(r.target)}</div></div>
+          <div class="when">${when}</div><div class="act"><button class="btn sm ${code==='todo-over'?'primary':''}" onclick="openMail('${r.s.id}','${r.kind}')" ${r.s.email?'':'disabled'}>${lbl}</button></div></div>`;
+      }).join('')+`</div>`;}).join('');}
+
+/* ============ LIST + INLINE EDIT ============ */
+let curFilter='all',curQ='',curProdi='';const OPEN=new Set();
+function matchFilter(s){if(curProdi&&s.prodi!==curProdi)return false;
+  const u=examStatus(s,'uts'),a=examStatus(s,'uas');
+  if(curFilter==='all')return true;
+  if(curFilter==='uts-todo')return ['todo-soon','todo-over'].includes(u.code)&&!s.utsSent;
+  if(curFilter==='uas-todo')return ['todo-soon','todo-over'].includes(a.code)&&!s.uasSent;
+  if(curFilter==='waiting')return (s.utsSent&&!s.utsFilled)||(s.uasSent&&!s.uasFilled);
+  if(curFilter==='done')return s.utsFilled&&s.uasFilled;
+  if(curFilter==='nodate')return !idDate(s.mulai)||!idDate(s.selesai);return true;}
+function badge(kind,s){const es=examStatus(s,kind);const tag=kind.toUpperCase();
+  const map={'filled':['done','diisi'],'sent':['sent','terkirim'],'todo-over':['over','lewat'],'todo-soon':['due','segera'],'todo-future':['todo','terjadwal'],'nodate':['todo','—']};
+  const [c,l]=map[es.code];return `<span class="bdg ${c}"><span class="dot"></span>${tag} ${l}</span>`;}
+function timelineHTML(s){const ed=examDates(s);if(!ed.a||!ed.b)return `<div class="tl"><div class="lbls"><span>Periode magang belum tersedia</span></div></div>`;
+  const span=daysBetween(ed.a,ed.b)||1;const pos=v=>v?Math.max(0,Math.min(100,daysBetween(ed.a,v)/span*100)):-99;const tp=pos(TODAY);
+  const uP=pos(ed.uts),aP=pos(ed.uas);
+  return `<div class="tl"><div class="track"><div class="prog" style="width:${Math.max(0,tp)}%"></div>
+      ${tp>=0&&tp<=100?`<div class="today" style="left:${tp}%"></div>`:''}
+      ${uP>=0?`<div class="mk uts ${s.utsFilled?'hit':''}" style="left:${uP}%;color:var(--ink)"></div>`:''}
+      ${aP>=0?`<div class="mk uas ${s.uasFilled?'hit':''}" style="left:${aP}%;color:var(--maroon)"></div>`:''}</div>
+    <div class="lbls"><span class="mono">${fmtShort(ed.a)}</span><span>● UTS ${fmtShort(ed.uts)} &nbsp; ◆ UAS ${fmtShort(ed.uas)}</span><span class="mono">${fmtShort(ed.b)}</span></div></div>`;}
+function cardHTML(s){const open=OPEN.has(s.id)?'open':'';const nw=s._new?' new':'';
+  return `<div class="card ${open}${nw}" data-id="${s.id}">
+    <div class="head" onclick="toggle('${s.id}',event)">
+      <div class="who-block">
+        <div><span class="name">${esc(s.nama)||'(tanpa nama)'}</span>${s.prodi?`<span class="prodichip">${esc(s.prodi)}</span>`:''}</div>
+        <div class="co"><b>${esc(s.perusahaan)||'Belum ada data perusahaan'}</b>${s.posisi?' · '+esc(s.posisi):''}</div>
+        <div class="sup">Supervisor: ${esc(s.supervisor)||'—'}${s.email?' · '+esc(s.email):' · (email belum ada)'}</div>
+      </div>
+      <div class="head-right"><div class="badges">${badge('uts',s)}${badge('uas',s)}</div><span class="caret">▾</span></div>
+      <div class="tlwrap">${timelineHTML(s)}</div>
+    </div>
+    <div class="body">
+      <div class="editgrid" onclick="event.stopPropagation()">
+        <div class="ef two"><label>Nama</label><input value="${esc(s.nama)}" onchange="setField('${s.id}','nama',this.value)"></div>
+        <div class="ef"><label>NIM</label><input value="${esc(s.nim)}" onchange="setField('${s.id}','nim',this.value)"></div>
+        <div class="ef"><label>Program Studi</label>${prodiSelect(s)}</div>
+        <div class="ef two"><label>Perusahaan / Instansi</label><input value="${esc(s.perusahaan)}" onchange="setField('${s.id}','perusahaan',this.value)"></div>
+        <div class="ef"><label>Posisi</label><input value="${esc(s.posisi)}" onchange="setField('${s.id}','posisi',this.value)"></div>
+        <div class="ef"><label>Supervisor</label><input value="${esc(s.supervisor)}" onchange="setField('${s.id}','supervisor',this.value)"></div>
+        <div class="ef"><label>Email supervisor</label><input type="email" value="${esc(s.email)}" onchange="setField('${s.id}','email',this.value)"></div>
+        <div class="ef full"><label>Durasi (teks)</label><div class="durrow"><input id="d-${s.id}-durasi" value="${esc(s.durasi_asli)}" placeholder="mis. 2 Juni 2026 - 2 September 2026" onchange="setField('${s.id}','durasi_asli',this.value)"><button class="btn sm" onclick="parseInline('${s.id}')">↧ Uraikan</button></div></div>
+        <div class="ef"><label>Tanggal mulai</label><input id="d-${s.id}-mulai" type="date" value="${s.mulai||''}" onchange="setDate('${s.id}','mulai',this.value)"></div>
+        <div class="ef"><label>Tanggal selesai</label><input id="d-${s.id}-selesai" type="date" value="${s.selesai||''}" onchange="setDate('${s.id}','selesai',this.value)"></div>
+      </div>
+      <div class="grid2">${examBlock(s,'uts')}${examBlock(s,'uas')}</div>
+      <div class="docs"><div class="field"><div class="flabel">📎 Dokumen laporan</div></div>
+        <div class="docwrap">${docBlock(s,'lapUts','Laporan Kemajuan (UTS)')}${docBlock(s,'lapAkhir','Laporan Akhir (UAS)')}</div></div>
+      <div class="rowbtns"><button class="btn sm danger" onclick="delStudent('${s.id}')">🗑 Hapus mahasiswa</button></div>
+    </div></div>`;}
+function prodiSelect(s){const opts=['BM','DBT','FBT','PDI'];const cur=s.prodi||'';const other=cur&&!opts.includes(cur);
+  return `<select onchange="setProdi('${s.id}',this.value)"><option value="" ${cur?'':'selected'}>—</option>`+
+    opts.map(o=>`<option ${o===cur?'selected':''}>${o}</option>`).join('')+
+    `<option value="__other" ${other?'selected':''}>${other?esc(cur):'Lainnya…'}</option></select>`;}
+function examBlock(s,kind){const isU=kind==='uts';const es=examStatus(s,kind);const fKey=isU?'utsFilled':'uasFilled';
+  const sentTxt=(isU?s.utsSent:s.uasSent)?'Email terkirim ✓':'Belum dikirim';
+  return `<div class="exam ${kind}"><div class="top"><div class="t">${isU?'UTS — Ujian Tengah Semester':'UAS — Ujian Akhir Semester'}</div><div class="d">${es.target?fmtShort(es.target):'—'}</div></div>
+    <div class="row"><label class="check"><input type="checkbox" ${s[fKey]?'checked':''} onchange="setField('${s.id}','${fKey}',this.checked)">Sudah diisi supervisor</label></div>
+    <div class="row" style="justify-content:space-between"><span class="mailinfo" style="margin:0">${sentTxt}</span>
+      <button class="btn sm" onclick="openMail('${s.id}','${kind}')" ${s.email?'':'disabled'}>✉ Tulis email</button></div></div>`;}
+function docBlock(s,key,label){const v=s[key]||'';
+  return `<div class="field"><div class="flabel" style="text-transform:none;font-weight:600;color:var(--ink)">${label}</div>
+    <div class="linkline"><input placeholder="Tempel link Google Drive / Docs…" value="${esc(v)}" onchange="setField('${s.id}','${key}',this.value)">
+      ${v?`<a class="btn sm" href="${esc(v)}" target="_blank" rel="noopener">Buka</a>`:''}</div></div>`;}
+function renderList(){const wrap=document.getElementById('cards');
+  const items=STUDENTS.filter(s=>{if(!matchFilter(s))return false;
+    if(curQ){const h=(s.nama+' '+s.perusahaan+' '+s.supervisor+' '+s.posisi+' '+s.nim).toLowerCase();if(!h.includes(curQ))return false;}return true;});
+  document.getElementById('pipList').textContent=STUDENTS.length;
+  document.getElementById('listCount').textContent=`Menampilkan ${items.length} dari ${STUDENTS.length} mahasiswa`;
+  if(!items.length){wrap.innerHTML=`<div class="empty"><div class="ic">⌕</div>Tidak ada yang cocok. Ubah filter/pencarian, atau tekan “Tambah mahasiswa”.</div>`;return;}
+  wrap.innerHTML=items.map(cardHTML).join('');}
+function replaceCard(id){const el=document.querySelector(`.card[data-id="${id}"]`);const s=byId(id);if(!el||!s)return;
+  const tmp=document.createElement('div');tmp.innerHTML=cardHTML(s);el.replaceWith(tmp.firstElementChild);}
+/* lightweight header refresh (keeps inputs & focus) */
+function softHead(id){const s=byId(id);const el=document.querySelector(`.card[data-id="${id}"]`);if(!s||!el)return;
+  el.querySelector('.name').textContent=s.nama||'(tanpa nama)';
+  const pc=el.querySelector('.prodichip');if(s.prodi){if(pc)pc.textContent=s.prodi;else el.querySelector('.name').insertAdjacentHTML('afterend',`<span class="prodichip">${esc(s.prodi)}</span>`);}else if(pc)pc.remove();
+  el.querySelector('.co').innerHTML=`<b>${esc(s.perusahaan)||'Belum ada data perusahaan'}</b>${s.posisi?' · '+esc(s.posisi):''}`;
+  el.querySelector('.sup').textContent=`Supervisor: ${s.supervisor||'—'}${s.email?' · '+s.email:' · (email belum ada)'}`;
+  el.querySelector('.badges').innerHTML=badge('uts',s)+badge('uas',s);
+  el.querySelector('.tlwrap').innerHTML=timelineHTML(s);
+  const ub=el.querySelector('.exam.uts .d'),ab=el.querySelector('.exam.uas .d');const ed=examDates(s);
+  if(ub)ub.textContent=ed.uts?fmtShort(ed.uts):'—';if(ab)ab.textContent=ed.uas?fmtShort(ed.uas):'—';}
+
+/* ============ FIELD ACTIONS ============ */
+function toggle(id,ev){if(ev&&ev.target.closest('.editgrid'))return;OPEN.has(id)?OPEN.delete(id):OPEN.add(id);
+  const c=document.querySelector(`.card[data-id="${id}"]`);if(c)c.classList.toggle('open');}
+function setField(id,key,val){const s=byId(id);if(!s)return;s[key]=(typeof val==='string')?val.trim():val;syncOne(s);softHead(id);renderHome();}
+function setProdi(id,val){const s=byId(id);if(!s)return;if(val==='__other'){val=(prompt('Program studi:',s.prodi&&!['BM','DBT','FBT','PDI'].includes(s.prodi)?s.prodi:'')||'').trim();}
+  s.prodi=val;syncOne(s);softHead(id);refreshProdiFilter();renderHome();}
+function setDate(id,key,val){const s=byId(id);if(!s)return;s[key]=val;s.hari=hariOf(s.mulai,s.selesai);syncOne(s);softHead(id);renderHome();}
+function parseInline(id){const s=byId(id);const inp=document.getElementById('d-'+id+'-durasi');const t=(inp?inp.value:s.durasi_asli||'').trim();
+  if(!t){flash('Isi teks durasi dulu');return;}s.durasi_asli=t;const r=parseDurasi(t);
+  if(!r.mulai||!r.selesai){flash('Tidak bisa menguraikan ('+(r.note||'format tak dikenali')+')');return;}
+  s.mulai=r.mulai;s.selesai=r.selesai;s.hari=hariOf(r.mulai,r.selesai);
+  const mi=document.getElementById('d-'+id+'-mulai'),se=document.getElementById('d-'+id+'-selesai');if(mi)mi.value=r.mulai;if(se)se.value=r.selesai;
+  syncOne(s);softHead(id);renderHome();flash('Tanggal terisi: '+fmtShort(idDate(r.mulai))+' – '+fmtShort(idDate(r.selesai)));}
+function addStudent(){const s=normalize({nama:'',_new:true});STUDENTS.unshift(s);OPEN.add(s.id);syncOne(s);
+  document.querySelector('.tab[data-tab="list"]').click();curFilter='all';curQ='';curProdi='';
+  document.getElementById('q').value='';document.getElementById('fProdi').value='';
+  document.querySelectorAll('#filters .chip').forEach(c=>c.classList.toggle('on',c.dataset.f==='all'));
+  renderList();renderHome();refreshProdiFilter();window.scrollTo({top:0,behavior:'smooth'});
+  setTimeout(()=>{const el=document.querySelector(`.card[data-id="${s.id}"] input`);if(el)el.focus();delete s._new;},300);}
+function delStudent(id){const s=byId(id);if(!s)return;if(!confirm(`Hapus data "${s.nama||'(tanpa nama)'}"? Tindakan ini tidak bisa dibatalkan.`))return;
+  STUDENTS=STUDENTS.filter(x=>x.id!==id);OPEN.delete(id);removeOne(id);refreshProdiFilter();renderHome();renderList();flash('Data dihapus');}
+function refreshProdiFilter(){const set=[...new Set(STUDENTS.map(s=>s.prodi).filter(Boolean))].sort();
+  const sel=document.getElementById('fProdi');const cur=sel.value;
+  sel.innerHTML='<option value="">Semua Prodi</option>'+set.map(p=>`<option ${p===cur?'selected':''}>${esc(p)}</option>`).join('');}
+
+/* ============ EMAIL MODAL ============ */
+let mailCtx=null;
+function openMail(id,kind){const s=byId(id);if(!s)return;const e=emailFor(s,kind);mailCtx={id,kind};
+  document.getElementById('m_type').textContent=kind.toUpperCase();document.getElementById('m_type').className='type '+(kind==='uas'?'uas':'');
+  document.getElementById('m_title').textContent='Email evaluasi '+kind.toUpperCase()+' — '+s.nama;
+  document.getElementById('m_to').value=e.to;document.getElementById('m_subj').value=e.subj;
+  document.getElementById('m_deadline').value=e.deadline;document.getElementById('m_body').value=e.body;
+  document.getElementById('scrimMail').classList.add('show');}
+function closeMail(){document.getElementById('scrimMail').classList.remove('show');mailCtx=null;}
+function curMail(){return {to:document.getElementById('m_to').value.trim(),subj:document.getElementById('m_subj').value,body:document.getElementById('m_body').value};}
+function openExt(url){
+  let win=null; try{win=window.open(url,'_blank','noopener');}catch(e){}
+  if(win){try{win.opener=null;}catch(e){} return true;}
+  try{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';document.body.appendChild(a);a.click();a.remove();return true;}catch(e){}
+  return false;}
+function tryOpen(url){ if(!openExt(url)) flash('Browser/pratinjau memblokir buka tab. Pakai “Salin teks”, atau buka file HTML ini langsung di browser.'); }
+document.getElementById('m_deadline').addEventListener('input',e=>{const ta=document.getElementById('m_body');ta.value=ta.value.replace(/(sampai dengan tanggal )([^\.]+)(\.)/,`$1${e.target.value}$3`);});
+
+/* ============ IMPORT / EXPORT ============ */
+function pick(row,keys){const lk=Object.keys(row);for(const w of keys){const k=lk.find(kk=>kk.toLowerCase().replace(/\s+/g,' ').trim()===w);if(k!=null&&row[k]!=='')return row[k];}
+  for(const w of keys){const k=lk.find(kk=>kk.toLowerCase().includes(w));if(k!=null&&row[k]!=='')return row[k];}return '';}
+function toISOcell(v){if(v instanceof Date&&!isNaN(v))return iso(new Date(v.getFullYear(),v.getMonth(),v.getDate()));
+  if(typeof v==='number'){const d=new Date(Date.UTC(1899,11,30)+v*86400000);return iso(new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));}
+  const s=String(v).trim();const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[0];const r=parseDurasi(s+' - '+s);return r.mulai||'';}
+document.getElementById('btnImport').onclick=()=>document.getElementById('fileImport').click();
+document.getElementById('fileImport').onchange=async(ev)=>{const file=ev.target.files[0];if(!file)return;
+  try{const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{defval:''});if(!rows.length){flash('Sheet pertama kosong');ev.target.value='';return;}
+    const parsed=[];const yn=v=>['true','ya','yes','1','sudah','v','✓'].includes(String(v).toLowerCase().trim());
+    rows.forEach(row=>{const nama=String(pick(row,['nama','name'])).trim();if(!nama)return;
+      let durasi='';for(const k of Object.keys(row)){if(/durasi|periode/i.test(k)){const val=String(row[k]);if(/[a-zA-Z]/.test(val)&&/[-–]/.test(val)){durasi=val.trim();break;}if(!durasi&&/[-–]/.test(val))durasi=val.trim();}}
+      let mulai=pick(row,['tgl mulai','tanggal mulai','mulai','start date','start']);let selesai=pick(row,['tgl selesai','tanggal selesai','selesai','end date','end']);
+      mulai=mulai?toISOcell(mulai):'';selesai=selesai?toISOcell(selesai):'';
+      if((!mulai||!selesai)&&durasi){const r=parseDurasi(durasi);mulai=mulai||r.mulai;selesai=selesai||r.selesai;}
+      parsed.push(normalize({nama,nim:String(pick(row,['nim'])||'').trim(),prodi:String(pick(row,['program studi','prodi'])||'').trim(),
+        perusahaan:String(pick(row,['perusahaan / instansi','perusahaan','instansi','company'])||'').trim(),posisi:String(pick(row,['posisi','position','role'])||'').trim(),
+        supervisor:String(pick(row,['supervisor','pembimbing'])||'').trim(),email:String(pick(row,['email supervisor','email'])||'').trim(),
+        durasi_asli:durasi,mulai,selesai,hari:hariOf(mulai,selesai),
+        utsFilled:yn(pick(row,['uts diisi supervisor','uts'])),uasFilled:yn(pick(row,['uas diisi supervisor','uas'])),
+        utsSent:yn(pick(row,['email uts terkirim'])),uasSent:yn(pick(row,['email uas terkirim'])),
+        lapUts:String(pick(row,['laporan kemajuan uts (link)','laporan kemajuan uts','laporan kemajuan'])||'').trim(),
+        lapAkhir:String(pick(row,['laporan akhir (link)','laporan akhir'])||'').trim()}));});
+    if(!parsed.length){flash('Kolom "Nama" tidak ditemukan');ev.target.value='';return;}
+    const add=confirm(`Ditemukan ${parsed.length} mahasiswa di "${file.name}".\n\nOK = TAMBAHKAN ke data (${STUDENTS.length}).\nBatal = GANTI seluruh data.`);
+    STUDENTS=add?STUDENTS.concat(parsed):parsed;await syncAll();refreshProdiFilter();renderHome();renderList();
+    document.querySelector('.tab[data-tab="list"]').click();flash(`<b>${parsed.length}</b> mahasiswa diimpor`);
+  }catch(e){flash('Gagal membaca file: '+e.message);}ev.target.value='';};
+function exportExcel(){if(!STUDENTS.length){flash('Belum ada data');return;}
+  const rows=STUDENTS.map((s,i)=>{const ed=examDates(s);
+    const stTxt=k=>({'filled':'Diisi','sent':'Terkirim (menunggu)','todo-over':'Lewat tenggat','todo-soon':'Segera','todo-future':'Terjadwal','nodate':'-'})[examStatus(s,k).code];
+    return {'No':i+1,'NIM':s.nim,'Nama':s.nama,'Program Studi':s.prodi,'Perusahaan / Instansi':s.perusahaan,'Posisi':s.posisi,'Supervisor':s.supervisor,'Email Supervisor':s.email,
+      'Durasi (rapi)':durText(s),'Tgl Mulai':s.mulai,'Tgl Selesai':s.selesai,'Hari':s.hari,
+      'Target UTS':ed.uts?fmtShort(ed.uts):'','Email UTS Terkirim':s.utsSent?'Ya':'Tidak','UTS Status':stTxt('uts'),'UTS Diisi Supervisor':s.utsFilled?'Ya':'Tidak','Laporan Kemajuan UTS (link)':s.lapUts||'',
+      'Target UAS':ed.uas?fmtShort(ed.uas):'','Email UAS Terkirim':s.uasSent?'Ya':'Tidak','UAS Status':stTxt('uas'),'UAS Diisi Supervisor':s.uasFilled?'Ya':'Tidak','Laporan Akhir (link)':s.lapAkhir||''};});
+  const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=Object.keys(rows[0]).map(k=>({wch:Math.min(34,Math.max(k.length+2,12))}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Rekap Coop 2026-1');
+  const d=new Date();XLSX.writeFile(wb,`Rekap_Evaluasi_Coop_2026-1_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.xlsx`);flash('File Excel diunduh');}
+
+/* ============ WIRING ============ */
+function flash(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('panel-'+b.dataset.tab).classList.add('active');});
+document.getElementById('q').addEventListener('input',e=>{curQ=e.target.value.toLowerCase().trim();renderList();});
+document.getElementById('fProdi').addEventListener('change',e=>{curProdi=e.target.value;renderList();});
+document.querySelectorAll('#filters .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#filters .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');curFilter=c.dataset.f;renderList();});
+document.getElementById('btnAdd').onclick=addStudent;
+document.getElementById('btnExport').onclick=exportExcel;
+document.getElementById('m_close').onclick=closeMail;
+document.getElementById('scrimMail').onclick=e=>{if(e.target.id==='scrimMail')closeMail();};
+document.getElementById('m_copy').onclick=async()=>{const m=curMail();const txt='Subjek: '+m.subj+'\n\n'+m.body;
+  try{await navigator.clipboard.writeText(txt);flash('Teks email disalin');}catch(e){const ta=document.getElementById('m_body');ta.select();try{document.execCommand('copy');flash('Teks email disalin');}catch(_){flash('Tidak bisa menyalin otomatis — salin manual');}}};
+document.getElementById('m_outlook').onclick=()=>{const m=curMail();tryOpen(`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(m.to)}&subject=${encodeURIComponent(m.subj)}&body=${encodeURIComponent(m.body)}`);};
+document.getElementById('m_mark').onclick=()=>{if(!mailCtx)return;const s=byId(mailCtx.id);s[mailCtx.kind==='uts'?'utsSent':'uasSent']=true;syncOne(s);renderHome();renderList();closeMail();flash('Ditandai sudah dikirim');};
+document.getElementById('btnReset').onclick=async()=>{if(!confirm('Kembalikan ke data awal? Perubahan lokal akan hilang.'))return;STUDENTS=SEED.map(normalize);OPEN.clear();await syncAll();refreshProdiFilter();renderHome();renderList();flash('Data dikembalikan ke awal');};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMail();});
+/* settings */
+function bindSlider(id,key,fmt){const el=document.getElementById(id),v=document.getElementById(id+'_v');const upd=()=>v.textContent=fmt(el.value);el.value=settings[key];upd();el.addEventListener('input',()=>{settings[key]=+el.value;upd();});el.addEventListener('change',()=>{persistSettings();renderHome();renderList();});}
+function bindText(id,key){const el=document.getElementById(id);el.value=settings[key];el.addEventListener('input',()=>settings[key]=el.value);el.addEventListener('change',persistSettings);}
+function bindDate(id,key){const el=document.getElementById(id);el.value=settings[key]||'';el.addEventListener('change',()=>{settings[key]=el.value;persistSettings();renderHome();renderList();});}
+function applyBasisUI(){document.querySelectorAll('#segBasis button').forEach(b=>b.classList.toggle('on',b.dataset.m===settings.mode));
+  document.getElementById('univDates').classList.toggle('dim',settings.mode!=='univ');
+  document.getElementById('autoDates').classList.toggle('dim',settings.mode!=='auto');}
+function wireSettings(){
+  document.querySelectorAll('#segBasis button').forEach(b=>b.onclick=()=>{settings.mode=b.dataset.m;applyBasisUI();persistSettings();renderHome();renderList();});
+  bindDate('s_utsUniv','utsUniv');bindDate('s_uasUniv','uasUniv');
+  bindSlider('s_utspct','utsPct',v=>v+'%');bindSlider('s_uasoff','uasOff',v=>v+' hr');bindSlider('s_lead','lead',v=>'H‑'+v);bindSlider('s_deadline','deadline',v=>v+' hr');
+  bindText('s_linkuts','linkUts');bindText('s_linkuas','linkUas');
+  applyBasisUI();document.getElementById('saveState').textContent=hasStorage?'✓ Pengaturan tersimpan otomatis':'⚠ Penyimpanan lokal tidak aktif';}
+
+/* ============ INIT ============ */
+(async function init(){
+  const ls=await lget('coop:students');if(ls&&ls.length)STUDENTS=ls.map(normalize);
+  const cs=await lget('coop:settings');if(cs)settings={...DEFAULTS,...cs};
+  if(!STUDENTS.length){STUDENTS=SEED.map(normalize);persistLocal();}
+  wireSettings();refreshProdiFilter();renderHome();renderList();
+  if(!hasStorage)flash('Mode pratinjau: perubahan lokal <b>tidak tersimpan permanen</b>');
+  // Supabase: aktif otomatis jika SUPABASE_URL & SUPABASE_ANON_KEY diisi di atas
+  if(SB.url&&SB.key){cloud('','Menyambungkan…');sbConnect(true);}
+  else{cloud('','Lokal');}
+})();
+</script>
