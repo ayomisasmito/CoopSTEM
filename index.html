@@ -382,8 +382,8 @@ async function persistSettings(){await lset('coop:settings',settings);document.g
    3. Simpan file. Jika kedua nilai di bawah kosong, aplikasi
       otomatis memakai penyimpanan lokal (tanpa cloud).
    ============================================================ */
-const SUPABASE_URL = "";   // contoh: "https://abcd1234.supabase.co"
-const SUPABASE_ANON_KEY = ""; // contoh: "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+const SUPABASE_URL = "https://qscddyzjaoqjzinwcjqp.supabase.co";   // contoh: "https://abcd1234.supabase.co"
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzY2RkeXpqYW9xanppbndjanFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4NzgzMTAsImV4cCI6MjEwMzQ1NDMxMH0.4Y1e1CCHqRFkAcsvvi5cg1CH-3xinSX0NxT_s6xRel0"; // contoh: "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
 
 const SB={client:null,url:SUPABASE_URL.trim(),key:SUPABASE_ANON_KEY.trim(),table:'coop_students',connected:false};
 function rowFrom(s){return {id:s.id,nim:s.nim,nama:s.nama,prodi:s.prodi,perusahaan:s.perusahaan,posisi:s.posisi,supervisor:s.supervisor,email:s.email,durasi_asli:s.durasi_asli,mulai:s.mulai||null,selesai:s.selesai||null,hari:s.hari,uts_sent:!!s.utsSent,uas_sent:!!s.uasSent,uts_filled:!!s.utsFilled,uas_filled:!!s.uasFilled,lap_uts:s.lapUts,lap_akhir:s.lapAkhir,updated_at:new Date().toISOString()};}
