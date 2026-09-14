@@ -370,6 +370,7 @@ table.stu tbody tr:hover{background:#fcfbf9}
   <div class="modal">
     <div class="mhead"><span class="type" id="m_type">UTS</span><h3 id="m_title">Tulis Email</h3><button class="x" id="m_close">×</button></div>
     <div class="mbdy">
+      <div class="mrow"><label>Bahasa</label><div class="seg" id="m_lang"><button class="on" data-l="id">Indonesia</button><button data-l="en">English</button></div></div>
       <div class="mrow"><label>Kepada</label><input id="m_to"></div>
       <div class="mrow"><label>Subjek</label><input id="m_subj"></div>
       <div class="mrow"><label>Tenggat</label><input id="m_deadline"></div>
@@ -435,7 +436,7 @@ function byId(id){return STUDENTS.find(x=>x.id===id);}
 async function lget(k){if(!hasStorage)return null;try{const r=await window.storage.get(k);return r&&r.value?JSON.parse(r.value):null;}catch(e){return null;}}
 async function lset(k,v){if(!hasStorage)return;try{await window.storage.set(k,JSON.stringify(v));}catch(e){}}
 let pT=null;function persistLocal(){if(pT)clearTimeout(pT);pT=setTimeout(()=>lset('coop:students',STUDENTS),300);}
-async function syncOne(s){persistLocal();if(SB.connected){try{await SB.client.from(SB.table).upsert(rowFrom(s));}catch(e){setSync('err','Gagal sinkron');}}}
+async function syncOne(s){persistLocal();if(SB.connected){try{const {error}=await SB.client.from(SB.table).upsert(rowFrom(s));if(error)throw error;return true;}catch(e){setSync('err','Gagal sinkron');return false;}}return false;}
 async function removeOne(id){persistLocal();if(SB.connected){try{await SB.client.from(SB.table).delete().eq('id',id);}catch(e){setSync('err','Gagal sinkron');}}}
 async function syncAll(){persistLocal();if(SB.connected){try{for(let i=0;i<STUDENTS.length;i+=200)await SB.client.from(SB.table).upsert(STUDENTS.slice(i,i+200).map(rowFrom));setSync('on');}catch(e){setSync('err','Gagal sinkron');}}}
 async function persistSettings(){await lset('coop:settings',settings);const el=document.getElementById('saveState');if(el)el.textContent=hasStorage?'✓ tersimpan':'⚠ lokal nonaktif';}
@@ -449,14 +450,20 @@ function setSync(state,txt){
   const sp=document.getElementById('sbPill');if(sp){sp.className='pill2'+(state==='on'?' on':state==='err'?' err':'');document.getElementById('sbPillTxt').textContent=txt||(state==='on'?'Supabase':state==='err'?'Gagal':'Lokal');}
   const push=document.getElementById('sbPush');if(push)push.style.display=SB.connected?'inline-flex':'none';}
 async function sbConnect(pull){
-  if(!SB.url||!SB.key)return false;
-  if(!window.supabase){setSync('err','Library gagal dimuat');return false;}
+  if(!SB.url||!SB.key){setSync('','Lokal (kredensial kosong)');return false;}
+  if(!window.supabase){setSync('err','Library Supabase gagal dimuat');flash('Supabase: library tidak termuat. Buka file ini langsung di browser (bukan pratinjau).');return false;}
   try{SB.client=window.supabase.createClient(SB.url,SB.key);
     const {error}=await SB.client.from(SB.table).select('id').limit(1);if(error)throw error;SB.connected=true;
     if(pull){const {data,error:e2}=await SB.client.from(SB.table).select('*');if(e2)throw e2;
       if(data&&data.length){STUDENTS=data.map(toStudent);persistLocal();}else{await syncAll();}}
-    setSync('on');refreshProdi();renderAll();return true;
-  }catch(e){SB.connected=false;setSync('err','Gagal tersambung');return false;}}
+    setSync('on');refreshProdi();renderAll();flash('Supabase tersambung ('+STUDENTS.length+' data)');return true;
+  }catch(e){SB.connected=false;const msg=(e&&e.message)?e.message:String(e);
+    console.error('Supabase error:',e);
+    let hint=msg;
+    if(/relation .* does not exist|coop_students/i.test(msg))hint='tabel belum dibuat — jalankan SQL di Supabase';
+    else if(/Invalid API key|JWT|apikey/i.test(msg))hint='anon key salah';
+    else if(/Failed to fetch|NetworkError|fetch/i.test(msg))hint='koneksi diblokir — buka file di browser biasa, bukan pratinjau';
+    setSync('err','Gagal: '+hint);flash('Supabase gagal: '+hint);return false;}}
 
 /* ---------- helpers ---------- */
 function idDate(x){if(!x)return null;const [y,m,d]=String(x).split('-').map(Number);if(!y||!m||!d)return null;const dt=new Date(y,m-1,d);dt.setHours(0,0,0,0);return dt;}
@@ -476,9 +483,34 @@ function esc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'
 function pillFor(k,s){const es=examStatus(s,k);const map={filled:['done','Diisi'],sent:['sent','Terkirim'],'todo-over':['over','Lewat'],'todo-soon':['due','Segera'],'todo-future':['todo','Terjadwal'],nodate:['todo','—']};const [c,l]=map[es.code];return `<span class="pill ${c}"><span class="d"></span>${l}</span>`;}
 
 /* ---------- email (Bapak/Ibu <nama>) ---------- */
+const BULAN_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function fmtEN(dt){if(!dt)return '—';return dt.getDate()+' '+BULAN_EN[dt.getMonth()]+' '+dt.getFullYear();}
 function sapaan(n){return n&&n.trim()?('Bapak/Ibu '+n.trim()):'Bapak/Ibu';}
-function emailFor(s,k){const isU=k==='uts';const label=isU?'Ujian Tengah Semester (UTS)':'Ujian Akhir Semester (UAS)';const tag=isU?'UTS':'UAS';
-  const link=isU?settings.linkUts:settings.linkUas;const deadline=fmtID(addDays(TODAY,settings.deadline));
+function emailFor(s,k,lang){lang=lang||'id';const isU=k==='uts';const tag=isU?'UTS':'UAS';
+  const link=isU?settings.linkUts:settings.linkUas;const dl=addDays(TODAY,settings.deadline);
+  if(lang==='en'){
+    const stage=isU?'Mid-term (UTS)':'Final (UAS)';const deadline=fmtEN(dl);
+    const greet=s.supervisor&&s.supervisor.trim()?('Dear Mr./Mrs. '+s.supervisor.trim()):'Dear Sir/Madam';
+    const subj=`[${tag}] Request for Internship Evaluation on behalf of ${s.nama}`;
+    const body=`${greet},
+${s.perusahaan||'-'}
+
+Thank you for the opportunity given to our student to undertake an internship at your company/institution.
+
+We kindly ask for your willingness to spare some time to complete the ${stage} evaluation for our student during the internship. The evaluation results are needed for our internal assessment and, of course, to help our students improve in their future internships.
+
+Student Details:
+Name        : ${s.nama}
+Student ID  : ${s.nim||'-'}
+Position    : ${s.posisi||'-'}
+Duration    : ${durText(s)}
+
+Here is the link for the ${tag} evaluation: ${link}
+
+We kindly hope you can complete the evaluation by ${deadline}. Thank you for your attention and cooperation.`;
+    return {subj,body,to:s.email||'',deadline};
+  }
+  const label=isU?'Ujian Tengah Semester (UTS)':'Ujian Akhir Semester (UAS)';const deadline=fmtID(dl);
   const subj=`[${tag}] Permohonan Pengisian Evaluasi Magang/Internship a.n ${s.nama}`;
   const body=`Kepada Yth.
 ${sapaan(s.supervisor)}
@@ -612,16 +644,20 @@ function delStudent(id){const s=byId(id);if(!s)return;if(!confirm(`Hapus data "$
 
 /* ---------- email modal ---------- */
 let mailCtx=null;
-function openMail(id,kind){const s=byId(id);if(!s)return;const e=emailFor(s,kind);mailCtx={id,kind};
+function renderMail(){const s=byId(mailCtx.id);if(!s)return;const e=emailFor(s,mailCtx.kind,mailCtx.lang);
+  document.getElementById('m_to').value=e.to;document.getElementById('m_subj').value=e.subj;document.getElementById('m_deadline').value=e.deadline;document.getElementById('m_body').value=e.body;
+  document.querySelectorAll('#m_lang button').forEach(b=>b.classList.toggle('on',b.dataset.l===mailCtx.lang));}
+function openMail(id,kind){const s=byId(id);if(!s)return;mailCtx={id,kind,lang:'id'};
   document.getElementById('m_type').textContent=kind.toUpperCase();document.getElementById('m_type').className='type '+(kind==='uas'?'uas':'');
   document.getElementById('m_title').textContent='Email '+kind.toUpperCase()+' — '+s.nama;
-  document.getElementById('m_to').value=e.to;document.getElementById('m_subj').value=e.subj;document.getElementById('m_deadline').value=e.deadline;document.getElementById('m_body').value=e.body;
-  document.getElementById('mscrim').classList.add('show');}
+  renderMail();document.getElementById('mscrim').classList.add('show');}
 function closeMail(){document.getElementById('mscrim').classList.remove('show');mailCtx=null;}
 function curMail(){return {to:document.getElementById('m_to').value.trim(),subj:document.getElementById('m_subj').value,body:document.getElementById('m_body').value};}
 function openExt(url){let w=null;try{w=window.open(url,'_blank','noopener');}catch(e){}if(w){try{w.opener=null;}catch(e){}return true;}try{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';document.body.appendChild(a);a.click();a.remove();return true;}catch(e){}return false;}
 function tryOpen(u){if(!openExt(u))flash('Browser/pratinjau memblokir buka tab. Pakai “Salin teks”, atau buka file HTML ini langsung di browser.');}
-document.getElementById('m_deadline').addEventListener('input',e=>{const ta=document.getElementById('m_body');ta.value=ta.value.replace(/(sampai dengan tanggal )([^\.]+)(\.)/,`$1${e.target.value}$3`);});
+document.querySelectorAll('#m_lang button').forEach(b=>b.onclick=()=>{if(!mailCtx)return;mailCtx.lang=b.dataset.l;renderMail();});
+document.getElementById('m_deadline').addEventListener('input',e=>{const ta=document.getElementById('m_body');const v=e.target.value;
+  ta.value=ta.value.replace(/(sampai dengan tanggal )([^\.]+)(\.)/,`$1${v}$3`).replace(/(evaluation by )([^\.]+)(\.)/,`$1${v}$3`);});
 
 /* ---------- import/export ---------- */
 function pick(row,keys){const lk=Object.keys(row);for(const w of keys){const k=lk.find(kk=>kk.toLowerCase().replace(/\s+/g,' ').trim()===w);if(k!=null&&row[k]!=='')return row[k];}for(const w of keys){const k=lk.find(kk=>kk.toLowerCase().includes(w));if(k!=null&&row[k]!=='')return row[k];}return '';}
@@ -668,7 +704,9 @@ document.getElementById('m_close').onclick=closeMail;
 document.getElementById('mscrim').onclick=e=>{if(e.target.id==='mscrim')closeMail();};
 document.getElementById('m_outlook').onclick=()=>{const m=curMail();tryOpen(`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(m.to)}&subject=${encodeURIComponent(m.subj)}&body=${encodeURIComponent(m.body)}`);};
 document.getElementById('m_copy').onclick=async()=>{const m=curMail();const txt='Subjek: '+m.subj+'\n\n'+m.body;try{await navigator.clipboard.writeText(txt);flash('Teks email disalin');}catch(e){const ta=document.getElementById('m_body');ta.select();try{document.execCommand('copy');flash('Teks email disalin');}catch(_){flash('Salin manual ya');}}};
-document.getElementById('m_mark').onclick=()=>{if(!mailCtx)return;const s=byId(mailCtx.id);s[mailCtx.kind==='uts'?'utsSent':'uasSent']=true;syncOne(s);if(drawerId===mailCtx.id)openDrawer(mailCtx.id);renderAll();closeMail();flash('Ditandai sudah dikirim');};
+document.getElementById('m_mark').onclick=async()=>{if(!mailCtx)return;const s=byId(mailCtx.id);s[mailCtx.kind==='uts'?'utsSent':'uasSent']=true;
+  const ok=await syncOne(s);if(drawerId===mailCtx.id)openDrawer(mailCtx.id);renderAll();closeMail();
+  flash(ok?'✓ Ditandai terkirim &amp; tersimpan di Supabase':(SB.connected?'✓ Ditandai (gagal sinkron ke cloud, tersimpan lokal)':'✓ Ditandai terkirim (tersimpan lokal)'));};
 document.getElementById('btnReset').onclick=async()=>{if(!confirm('Kembalikan ke data awal? Perubahan lokal akan hilang.'))return;STUDENTS=SEED.map(normalize);await syncAll();refreshProdi();renderAll();flash('Data dikembalikan');};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMail();closeDrawer();}});
 const SQLTXT=`create table if not exists coop_students (
